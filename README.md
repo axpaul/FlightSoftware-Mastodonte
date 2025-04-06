@@ -7,6 +7,12 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 
 ---
 
+<p align="center">
+  <img src="docs/Mastodonte-N6.png" alt="Carte Mastodonte" width="800"/>
+</p>
+
+---
+
 ## ✦ Features
 
 - Arduino framework (Earle Philhower core) on RP2040
