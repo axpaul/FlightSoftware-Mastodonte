@@ -1,4 +1,4 @@
-# FlightSoftware-Mastodonte
+# Flight Software Mastodonte
 
 **FlightSoftware-Mastodonte** is the embedded flight software running on the **YD-RP2040** controller of the experimental rocket **Mastodonte**.  
 It acts as the onboard **flight sequencer**, managing time-critical events and hardware interfaces during the mission.
