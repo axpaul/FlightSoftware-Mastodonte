@@ -13,7 +13,7 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 
 ---
 
-## ✦ Features
+## Features
 
 - Arduino framework (Earle Philhower core) on RP2040
 - Built-in WS2812B RGB LED control (no external wiring)
@@ -26,7 +26,7 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 
 ---
 
-## ✦ Platform Configuration
+## Platform Configuration
 
 | Parameter           | Value                    |
 |---------------------|--------------------------|
@@ -42,7 +42,7 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 
 ---
 
-## ✦ External Libraries
+## External Libraries
 
 Declared in `platformio.ini`:
 
@@ -54,7 +54,7 @@ Declared in `platformio.ini`:
 
 ---
 
-## ✦ Synoptic
+## Synoptic
 
 <p align="center">
   <img src="docs/Mastodonte_synoptique.png" alt="Synoptique Mastodonte" width="750"/>
