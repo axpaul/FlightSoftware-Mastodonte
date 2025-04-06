@@ -53,3 +53,11 @@ Declared in `platformio.ini`:
 | Adafruit GFX                | `1.11.9`  | Core graphics (OLED backend) |
 
 ---
+
+## ✦ Synoptic
+
+<p align="center">
+  <img src="docs/Mastodonte_synoptique.png" alt="Synoptique Mastodonte" width="750"/>
+</p>
+
+---
