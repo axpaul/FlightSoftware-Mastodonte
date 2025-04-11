@@ -14,21 +14,32 @@
 
 Adafruit_NeoPixel rgb(1, PIN_LED_WS2812, NEO_GRB + NEO_KHZ800);
 
-volatile bool triggerRBF = false;
+volatile uint8_t triggerRBF = 0;
 
-void onInterrupt(){
-   triggerRBF = true;
+void RBF_arm();
+
+void RBF_arm() {
+  debugPrintln("[INTERRUPT] Detect");
+  debugPrintf("[INTERRUPT] Pin value : %d", digitalRead(PIN_SMITCH_N2));
+  
+  if (digitalRead(PIN_SMITCH_N2) == 1){
+    triggerRBF = 1;
+    debugPrintln("[INTERRUPT] High");
+  }
+    
+  if (digitalRead(PIN_SMITCH_N2) == 0){
+    triggerRBF = 2;
+    debugPrintln("[INTERRUPT] Low");
+  }
 }
 
 void setup() {
-
   pinMode(PIN_LED_STATUS, OUTPUT);
-  pinMode(PIN_SMITCH_N2, INPUT);  // Entrée logique (pull-up si nécessaire)
+  pinMode(PIN_SMITCH_N2, INPUT_PULLUP);  // Avec pull-up, utile si bouton vers GND
 
-  int debugConnected = debugBegin();  
+  int debugConnected = debugBegin();
 
-  // Active l’interruption sur front montant (LOW→HIGH)
-  attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), onInterrupt, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), RBF_arm, CHANGE);
 
   if (debugConnected) {
     debugPrintln("[BOOT] Mastodonte ready.");
@@ -42,19 +53,22 @@ void setup() {
   rgb.setBrightness(50);
   rgb.clear();
   rgb.show();
-
-  setBuzzer(true, 1000, 150, 1200);
-
 }
 
-void loop(){
-
-  if (triggerRBF) {
-    triggerRBF = false;
-    debugPrintln("[INTERUPT] RBF remove");
-    rgb.Color(255, 255, 255);
+void loop() {
+  if (triggerRBF == 1) {
+    debugPrintln("[INTERRUPT] RBF removed");
+    rgb.setPixelColor(0, rgb.Color(255, 255, 255));
+    rgb.show();
     setBuzzer(true, 200, 100, 300);
-
+    triggerRBF = 0;
+  } else if (triggerRBF == 2) {
+    debugPrintln("[INTERRUPT] RBF inserted");
+    rgb.setPixelColor(0, rgb.Color(255, 0, 0));
+    rgb.show();
+    setBuzzer(false);
+    triggerRBF = 0;
   }
 
+  // Boucle principale sans action si pas de changement
 }
