@@ -11,7 +11,7 @@
 
 #if DEBUG_ENABLED
 
-int debugBegin(unsigned long baud) {
+int debug_begin(unsigned long baud) {
     Serial.begin(baud);
     float start = millis();
   
@@ -28,16 +28,15 @@ int debugBegin(unsigned long baud) {
     return 0;    // NOK
   }
   
-
-void debugPrint(const String& msg) {
+void debug_print(const String& msg) {
   Serial.print(msg);
 }
 
-void debugPrintln(const String& msg) {
+void debug_println(const String& msg) {
   Serial.println(msg);
 }
 
-void debugPrintf(const char* fmt, ...) {
+void debug_printf(const char* fmt, ...) {
   char buffer[128];
   va_list args;
   va_start(args, fmt);
@@ -48,9 +47,9 @@ void debugPrintf(const char* fmt, ...) {
 
 #else
 
-int debugBegin(unsigned long baud) {return 0;}
-void debugPrint(const String&) {}
-void debugPrintln(const String&) {}
-void debugPrintf(const char*, ...) {}
+int debug_begin(unsigned long baud) {return 0;}
+void debug_print(const String&) {}
+void debug_println(const String&) {}
+void debug_printf(const char*, ...) {}
 
 #endif

@@ -17,19 +17,16 @@
 #include <stdarg.h>
 
 #if DEBUG_ENABLED
-  int debugBegin(unsigned long baud = 115200); 
-  void debugPrint(const String& msg);
-  void debugPrintln(const String& msg);
-  // Fonction variadique (comme printf) : accepte un format + arguments variables
-  // Ex: debugPrintf("valeur = %d\n", 42);
-  // Nécessite <stdarg.h> pour gérer les arguments (...).
-  void debugPrintf(const char* fmt, ...);
+  int debug_begin(unsigned long baud = 115200); 
+  void debug_print(const String& msg);
+  void debug_println(const String& msg);
+  void debug_printf(const char* fmt, ...); // Fonction variadique (comme printf) : accepte un format + arguments variables. Ex: debugPrintf("valeur = %d\n", 42);
 
 #else
-  int debugBegin(unsigned long baud = 0);
-  void debugPrint(const String&);
-  void debugPrintln(const String&);
-  void debugPrintf(const char*, ...);
+  int debug_begin(unsigned long baud = 0);
+  void debug_print(const String&);
+  void debug_println(const String&);
+  void debug_printf(const char*, ...);
 
 #endif
 
