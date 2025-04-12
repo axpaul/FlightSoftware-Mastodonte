@@ -7,8 +7,6 @@
 // -------------------------------------------------------------
 
 #include "buzzer.h"
-#include "board.h"
-#include "hardware/timer.h"
 
 static BuzzerConfig buzzerConfig; // Ne plus utiliser new/delete
 
