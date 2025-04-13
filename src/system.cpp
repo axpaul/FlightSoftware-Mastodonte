@@ -34,12 +34,14 @@ float battery_read_voltage(uint16_t raw) {
 void setup_pin(void){
   pinMode(PIN_LED_STATUS, OUTPUT);
   pinMode(PIN_VCC_BAT, INPUT);
-  pinMode(PIN_SMITCH_N2, INPUT_PULLUP);  // Avec pull-up, utile si bouton vers GND
+  pinMode(PIN_SMITCH_N1, INPUT);  
+  pinMode(PIN_SMITCH_N2, INPUT);
 }
 
-void setup_interrupt(void){
-  attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), seq_arm_rbf, CHANGE);
-}
+// void setup_interrupt(void){
+//   attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N1), seq_detect_liftoff, FALLING);
+//   attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), seq_arm_rbf, CHANGE);
+// }
 
 void setup_rgb(void){
   rgb.begin();
