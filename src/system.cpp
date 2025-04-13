@@ -7,6 +7,9 @@
 // -------------------------------------------------------------
 
 #include "system.h"
+#include "sequencer.h"
+
+Adafruit_NeoPixel rgb(1, PIN_LED_WS2812, NEO_GRB + NEO_KHZ800);
 
 timestamp_t compute_timestamp(absolute_time_t timestamp) {
     int64_t total_us = to_us_since_boot(timestamp);
@@ -28,3 +31,20 @@ float battery_read_voltage(uint16_t raw) {
     return batteryVoltage;
 }
   
+void setup_pin(void){
+  pinMode(PIN_LED_STATUS, OUTPUT);
+  pinMode(PIN_VCC_BAT, INPUT);
+  pinMode(PIN_SMITCH_N2, INPUT_PULLUP);  // Avec pull-up, utile si bouton vers GND
+}
+
+void setup_interrupt(void){
+  attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), seq_arm_rbf, CHANGE);
+}
+
+void setup_rgb(void){
+  rgb.begin();
+  rgb.setBrightness(50);
+  rgb.clear();
+  rgb.setPixelColor(0, rgb.Color(0, 255, 0));
+  rgb.show();
+}

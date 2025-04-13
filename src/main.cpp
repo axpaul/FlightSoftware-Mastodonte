@@ -7,29 +7,21 @@
 // -------------------------------------------------------------
 
 #include <Arduino.h>
-#include <Adafruit_NeoPixel.h>
 
 #include "board.h"
 #include "debug.h"
 #include "buzzer.h"
+#include "sequencer.h"
 #include "system.h"
 
-Adafruit_NeoPixel rgb(1, PIN_LED_WS2812, NEO_GRB + NEO_KHZ800);
-volatile uint8_t triggerRBF = 0;
+void setup(void) {
 
-
-void RBF_arm(void);
-void setup_pin(void);
-void setup_interrupt(void);
-
-void setup() {
-
-  int debugConnected = debug_begin();
   analogReadResolution(12);
   setup_pin();
   setup_interrupt();
+  setup_rgb();
 
-  if (debugConnected) {
+  if (debug_begin()) {
     debug_println("[BOOT] Mastodonte ready.");
     debug_printf("[BOOT] Board: %s, FW: %s\n", BOARD_NAME_SYS, FW_VERSION);
     debug_printf("[BOOT] Voltage Battery : %f\n", battery_read_voltage(analogRead(PIN_VCC_BAT)));
@@ -37,54 +29,35 @@ void setup() {
   } else {
     digitalWrite(PIN_LED_STATUS, HIGH);
   }
-
-  rgb.begin();
-  rgb.setBrightness(50);
-  rgb.clear();
-  rgb.show();
 }
 
 void loop() {
 
   if (triggerRBF == 1) {
-    debug_println("[INTERRUPT] RBF removed");
-    rgb.setPixelColor(0, rgb.Color(255, 255, 255));
-    rgb.show();
-    setBuzzer(true, 200, 100, 300);
+    debug_println("[MAIN] RBF remove");
+    apply_state_config(PRE_FLIGHT);
+    delay(10000);
+    apply_state_config(PYRO_RDY);
+    delay(10000);
+    apply_state_config(ASCEND);
+    delay(10000);
+    apply_state_config(DEPLOY_ALGO);
+    delay(10000);
+    apply_state_config(DESCEND);
+    delay(10000);
+    apply_state_config(TOUCHDOWN);
+    delay(10000);
+    apply_state_config(ERROR_SEQ);
+    delay(10000);
+    apply_state_config(PRE_FLIGHT);
     triggerRBF = 0;
   } else if (triggerRBF == 2) {
-    debug_println("[INTERRUPT] RBF inserted");
-    rgb.setPixelColor(0, rgb.Color(255, 0, 0));
-    rgb.show();
-    setBuzzer(false);
+    debug_println("[MAIN] RBF inserted");
+    apply_state_config(PRE_FLIGHT);
     triggerRBF = 0;
   }
+
+
+
   // Boucle principale sans action si pas de changement
-}
-
-void RBF_arm(void) {
-  timestamp_t ts = compute_timestamp(get_absolute_time());
-  debug_println("[INTERRUPT] Detect : ");
-  debug_printf("[INTERRUPT] T = %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-  debug_printf("[INTERRUPT] Pin value : %d\n", digitalRead(PIN_SMITCH_N2));
-  
-  if (digitalRead(PIN_SMITCH_N2) == 0){
-    triggerRBF = 1;
-    debug_println("[INTERRUPT] High");
-  }
-    
-  if (digitalRead(PIN_SMITCH_N2) == 1){
-    triggerRBF = 2;
-    debug_println("[INTERRUPT] Low");
-  }
-}
-
-void setup_pin(void){
-  pinMode(PIN_LED_STATUS, OUTPUT);
-  pinMode(PIN_VCC_BAT, INPUT);
-  pinMode(PIN_SMITCH_N2, INPUT_PULLUP);  // Avec pull-up, utile si bouton vers GND
-}
-
-void setup_interrupt(void){
-  attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), RBF_arm, CHANGE);
 }
