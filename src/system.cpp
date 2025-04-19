@@ -34,8 +34,16 @@ float battery_read_voltage(uint16_t raw) {
 void setup_pin(void){
   pinMode(PIN_LED_STATUS, OUTPUT);
   pinMode(PIN_VCC_BAT, INPUT);
-  pinMode(PIN_SMITCH_N1, INPUT);  
-  pinMode(PIN_SMITCH_N2, INPUT);
+  // pinMode(PIN_SMITCH_N1, INPUT);  
+  // pinMode(PIN_SMITCH_N2, INPUT);
+
+  gpio_init(PIN_SMITCH_N1);
+  gpio_set_dir(PIN_SMITCH_N1, GPIO_IN);
+  gpio_disable_pulls(PIN_SMITCH_N1);     
+  gpio_init(PIN_SMITCH_N2);
+  gpio_set_dir(PIN_SMITCH_N2, GPIO_IN);
+  gpio_disable_pulls(PIN_SMITCH_N1);  
+
 }
 
 // void setup_interrupt(void){

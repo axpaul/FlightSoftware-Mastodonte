@@ -16,37 +16,34 @@ volatile uint8_t triggerRBF = 0;
 volatile uint8_t triggerJack = 0;
 bool windowOpen = false;
 
-void seq_arm_rbf_callback() {
+void seq_gpio_callback(uint gpio, uint32_t events) {
     timestamp_t ts = compute_timestamp(get_absolute_time());
-    uint8_t pinSwitch = digitalRead(PIN_SMITCH_N2);
+    uint8_t value = gpio_get(gpio);
 
-    debug_printf("[INTERRUPT] RBF Event @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-    debug_printf("[INTERRUPT] Pin value = %d (logic %s)\n", pinSwitch, (pinSwitch == 0 ? "LOW" : "HIGH"));
+    debug_printf("[INTERRUPT] GPIO %d Event @ %02lu:%02lu.%03lu.%03lu\n",
+                 gpio, ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+    debug_printf("[INTERRUPT] Pin value = %d (logic %s)\n", value, (value == 0 ? "LOW" : "HIGH"));
 
-    if (pinSwitch == 0) {
-        triggerRBF = 1;
-        debug_println("[SEQ] RBF disarmed → transition to PYRO_RDY");
+    if (gpio == PIN_SMITCH_N2) {
+        if (value == 0) {
+            triggerRBF = 1;
+            debug_println("[INTERRUPT] RBF disarmed → transition to PYRO_RDY");
+        } else {
+            triggerRBF = 2;
+            debug_println("[INTERRUPT] RBF inserted → return to PRE_FLIGHT");
+        }
+    } else if (gpio == PIN_SMITCH_N1) {
+        if (value == 0) {
+            triggerJack = 1;
+            debug_println("[INTERRUPT] Jack removed → LIFTOFF detected");
+        } else {
+            triggerJack = 0;
+            debug_println("[INTERRUPT] Jack present → CONTINUITY detected");
+        }
     }
 
-    if (pinSwitch == 1) {
-        triggerRBF = 2;
-        debug_println("[SEQ] RBF inserted → return to PRE_FLIGHT");
-    }
+    gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE);
 }
-
-void seq_detect_liftoff_callback(void) {
-    timestamp_t ts = compute_timestamp(get_absolute_time());
-    uint8_t pinSwitch = digitalRead(PIN_SMITCH_N1);
-
-    debug_printf("[INTERRUPT] Jack Detected @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-    debug_printf("[INTERRUPT] Pin value = %d (logic %s)\n", pinSwitch, (pinSwitch == 0 ? "LOW" : "HIGH"));
-
-    if (pinSwitch == 0) {
-        triggerJack = 1;
-        debug_println("[SEQ] Jack removed → LIFTOFF detected");
-    }
-}
-
   
 int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data) {
     timestamp_t ts = compute_timestamp(get_absolute_time());
@@ -60,7 +57,7 @@ int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data) {
     return 0;
 }
 
-  int64_t seq_window_timeout_callback(alarm_id_t id, void* user_data) {
+int64_t seq_window_timeout_callback(alarm_id_t id, void* user_data) {
     timestamp_t ts = compute_timestamp(get_absolute_time());
 
     debug_printf("[INTERRUPT] Close window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
@@ -71,10 +68,26 @@ int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data) {
     debug_println("[SEQ] +10 percent climax reached → WINDOW state disabled");
     return 0;
   }
+
+void seq_reset_triggers() {
+    triggerRBF = 0;
+    triggerJack = 0;
+}
   
 rocket_state_t seq_init(void){
-    attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2), seq_arm_rbf_callback, CHANGE);
-    //attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N1), seq_detect_liftoff, FALLING);
+
+    uint8_t jackState = gpio_get(PIN_SMITCH_N1);
+    uint8_t rbfState  = gpio_get(PIN_SMITCH_N2);
+
+    debug_printf("[CHECK] Pin N1 (JACK)  = %d (%s)\n", jackState,  (jackState == 0 ? "REMOVED" : "CONTINUITY"));
+    debug_printf("[CHECK] Pin N2 (RBF)   = %d (%s)\n", rbfState,   (rbfState  == 0 ? "REMOVED"     : "INSERTED"));
+
+    gpio_set_irq_callback(seq_gpio_callback);
+
+    gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+
+    irq_set_enabled(IO_IRQ_BANK0, true);
+
     apply_state_config(PRE_FLIGHT);
     return PRE_FLIGHT;
 }
@@ -100,13 +113,11 @@ rocket_state_t seq_handle(void) {
         // === État : Fenetre ===
         case WINDOW: 
             currentState = seq_window();
-            apply_state_config(WINDOW);
             break;
 
         // === État : Déploiement via algo ===
         case DEPLOY_ALGO:
             currentState = seq_deploy();
-            apply_state_config(DEPLOY_ALGO);
             break;
 
         // === État : Déploiement via timer ===
@@ -141,10 +152,13 @@ rocket_state_t seq_preLaunch(void) {
     // Passage à PYRO_RDY après retrait du RBF
     if (triggerRBF == 1) {  
         triggerRBF = 0;
+
+        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, true);
+
         apply_state_config(PYRO_RDY);
-        attachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N1), seq_detect_liftoff_callback, FALLING);
         return PYRO_RDY;
     }
+    
     return PRE_FLIGHT;
 }
 
@@ -152,15 +166,23 @@ rocket_state_t seq_pyroRdy(void){
     // Passage à PRE_FLIGHT après insertion du RBF
     if (triggerRBF == 2) {
         triggerRBF = 0;
-        detachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N1));
+
+        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL); 
+        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, false);
+
         apply_state_config(PRE_FLIGHT);
         return PRE_FLIGHT;
     }
     // Passage à ASCEND après retrait du Jack
     if (triggerJack == 1) {
+        triggerJack = 0;
         timestamp_t ts = compute_timestamp(get_absolute_time());
-        detachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N1));
-        detachInterrupt(digitalPinToInterrupt(PIN_SMITCH_N2));
+
+        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL); 
+        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, false);
+
+        gpio_acknowledge_irq(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE);
+        gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, false);
 
         add_alarm_in_us(WINDOW_OPEN_OFFSET_US, seq_is_window_open_callback, nullptr, true);
 
@@ -182,11 +204,10 @@ rocket_state_t seq_ascend(void){
             cancel_alarm(windowAlarmId);
         }
 
-        // windowAlarmId = add_alarm_in_us(WINDOW_DURATION_US, seq_window_timeout_callback, NULL, true);
+        windowAlarmId = add_alarm_in_us(WINDOW_DURATION_US, seq_window_timeout_callback, NULL, true);
         debug_printf("[ASCEND] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
         debug_printf("[ASCEND] Window closure timer started for %.2f s\n", WINDOW_DURATION_US / 1e6);
 
-        //seq_start_window_timer();
         apply_state_config(WINDOW);
 
         return WINDOW;
@@ -196,6 +217,20 @@ rocket_state_t seq_ascend(void){
 }
 
 rocket_state_t seq_window(void){
+
+    if(windowOpen == false){
+        timestamp_t ts = compute_timestamp(get_absolute_time());
+        if (windowAlarmId != -1) {
+            cancel_alarm(windowAlarmId);
+        }
+
+        windowAlarmId = add_alarm_in_us(WINDOW_DURATION_US, seq_window_timeout_callback, NULL, true);
+        debug_printf("[WINDOW] Alarm close timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+
+        apply_state_config(DESCEND);
+
+        return DESCEND;
+    }
 
     return WINDOW;
 }
@@ -207,7 +242,7 @@ rocket_state_t seq_deploy(void){
 
 rocket_state_t seq_descend(void){
 
-    return PRE_FLIGHT;
+    return DESCEND;
 }
 
 rocket_state_t seq_touchdown(void){
@@ -275,3 +310,39 @@ void apply_state_config(rocket_state_t state) {
     rgb.setPixelColor(0, color);
     rgb.show();
 }
+
+
+// void seq_arm_rbf_callback(void) {
+//     timestamp_t ts = compute_timestamp(get_absolute_time());
+//     uint8_t GPIO = gpio_get(PIN_SMITCH_N2);
+
+//     debug_printf("[INTERRUPT] RBF Event @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+//     debug_printf("[INTERRUPT] Pin value = %d (logic %s)\n", GPIO, (GPIO == 0 ? "LOW" : "HIGH"));
+
+//     if (GPIO == 0) {
+//         triggerRBF = 1;
+//         debug_println("[SEQ] RBF disarmed → transition to PYRO_RDY");
+//     }
+
+//     if (GPIO == 1) {
+//         triggerRBF = 2;
+//         debug_println("[SEQ] RBF inserted → return to PRE_FLIGHT");
+//     }
+
+//     gpio_acknowledge_irq(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE);
+// }
+
+// void seq_detect_liftoff_callback(void) {
+//     timestamp_t ts = compute_timestamp(get_absolute_time());
+//     uint8_t GPIO = gpio_get(PIN_SMITCH_N1);
+
+//     debug_printf("[INTERRUPT] Jack Detected @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+//     debug_printf("[INTERRUPT] Pin value = %d (logic %s)\n", GPIO, (GPIO == 0 ? "LOW" : "HIGH"));
+
+//     if (GPIO == 0) {
+//         triggerJack = 1;
+//         debug_println("[SEQ] Jack removed → LIFTOFF detected");
+//     }
+
+//     gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL);
+// }

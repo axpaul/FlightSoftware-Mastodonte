@@ -19,7 +19,6 @@ void setup(void) {
   analogReadResolution(12);
   setup_pin();
   setup_rgb();
-  seq_init();
 
   if (debug_begin()) {
     debug_println("[BOOT] Mastodonte ready.");
@@ -29,6 +28,8 @@ void setup(void) {
   } else {
     digitalWrite(PIN_LED_STATUS, HIGH);
   }
+
+  seq_init();
 
 }
 

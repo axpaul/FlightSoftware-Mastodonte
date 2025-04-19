@@ -36,11 +36,15 @@ rocket_state_t seq_descend(void);
 rocket_state_t seq_touchdown(void);
 
 // Interrupt Fonction 
-void seq_arm_rbf_callback(void);
-void seq_detect_liftoff_callback(void);
+ void seq_arm_rbf_callback(void);
+ void seq_detect_liftoff_callback(void);
+
+void seq_gpio_callback(uint gpio, uint32_t events);
 int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data);
 int64_t seq_window_timeout_callback(alarm_id_t id, void* user_data);
 void seq_start_window_timer();
+
+void seq_reset_triggers();
 
 void seq_detect_apogee(void);
 void seq_deploy_recovery(void);
