@@ -47,8 +47,6 @@ float temperature_read_mcu(void) {
   
 void setup_pin(void){
   
-  //pinMode(PIN_VCC_BAT, INPUT);
-
   adc_gpio_init(28);       // Active la fonction ADC sur GPIO28
   adc_select_input(2);     // Sélectionne l'entrée ADC2
 
@@ -63,6 +61,9 @@ void setup_pin(void){
   gpio_init(IN2_M2);
   gpio_init(IN1_M3);
   gpio_init(IN2_M3);
+  gpio_init(NFAUT_M1);            
+  gpio_init(NFAUT_M2);         
+  gpio_init(NFAUT_M3);           
   
   gpio_set_dir(PIN_LED_STATUS, GPIO_OUT);
   gpio_set_dir(PIN_SMITCH_N1, GPIO_IN);
@@ -75,6 +76,10 @@ void setup_pin(void){
   gpio_set_dir(IN2_M2, GPIO_OUT);
   gpio_set_dir(IN1_M3, GPIO_OUT);
   gpio_set_dir(IN2_M3, GPIO_OUT);
+  gpio_set_dir(NFAUT_M1, GPIO_IN);
+  gpio_set_dir(NFAUT_M2, GPIO_IN);
+  gpio_set_dir(NFAUT_M3, GPIO_IN);
+
 
   gpio_disable_pulls(PIN_LED_STATUS);   
   gpio_disable_pulls(PIN_SMITCH_N1);     
@@ -87,6 +92,9 @@ void setup_pin(void){
   gpio_disable_pulls(IN2_M2);
   gpio_disable_pulls(IN1_M3);
   gpio_disable_pulls(IN2_M3);
+  gpio_disable_pulls(NFAUT_M1);
+  gpio_disable_pulls(NFAUT_M2);
+  gpio_disable_pulls(NFAUT_M3);
 
 }
 
