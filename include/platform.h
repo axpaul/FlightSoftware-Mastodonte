@@ -60,4 +60,6 @@
 #define BOARD_NAME_SYS "YD-RP2040 Mastodonte"
 #define FW_VERSION "v0.1.0"
 
+typedef enum {PRE_FLIGHT = 0, PYRO_RDY, ASCEND, WINDOW, DEPLOY_ALGO, DEPLOY_TIMER, DESCEND, TOUCHDOWN, ERROR_SEQ} rocket_state_t;
+
 #endif // BOARD_HEADER_FILE

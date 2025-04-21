@@ -11,7 +11,7 @@
 
 #include <Arduino.h>
 
-#include "board.h"
+#include "platform.h"
 #include "hardware/timer.h"
 
 // Appelle setBuzzer(true, 1000, 100); pour un bip toutes les secondes pendant 100 ms

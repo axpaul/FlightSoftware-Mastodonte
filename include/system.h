@@ -13,8 +13,11 @@
 #include <Adafruit_NeoPixel.h>
 
 #include "hardware/timer.h"
-#include "sequencer.h"
-#include "board.h"
+#include "pico/stdlib.h"
+#include "hardware/adc.h"
+
+#include "buzzer.h"
+#include "platform.h"
 
 typedef struct {
     uint32_t minutes;
@@ -23,13 +26,18 @@ typedef struct {
     uint32_t microseconds;
   } timestamp_t;
 
-  extern Adafruit_NeoPixel rgb;
+
+extern Adafruit_NeoPixel rgb;
   
-  timestamp_t compute_timestamp(absolute_time_t timestamp);
-  float battery_read_voltage(uint16_t raw);
+timestamp_t compute_timestamp(absolute_time_t timestamp);
 
-  void setup_pin(void);
-  void setup_interrupt(void);
-  void setup_rgb(void);
+float battery_read_voltage(void);
+float temperature_read_mcu(void);
 
-  #endif
+void setup_pin(void);
+void setup_interrupt(void);
+void setup_rgb(void);
+
+void apply_state_config(rocket_state_t state);
+
+#endif
