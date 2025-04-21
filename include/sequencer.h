@@ -11,7 +11,7 @@
 
 #define THEORETICAL_APOGEE_US 10000000
 #define THEORETICAL_DESCENT_US 15000000
-#define WINDOW_MARGIN_PCT     10
+#define WINDOW_MARGIN_PCT     20
 #define WINDOW_OPEN_OFFSET_US (THEORETICAL_APOGEE_US * (100 - WINDOW_MARGIN_PCT) / 100)
 #define WINDOW_DURATION_US    (2 * THEORETICAL_APOGEE_US * WINDOW_MARGIN_PCT / 100)
 
@@ -19,6 +19,7 @@
 #include "debug.h"
 #include "buzzer.h"
 #include "system.h"
+#include "drv8872.h"
 
 extern volatile uint8_t triggerRBF;
 

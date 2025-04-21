@@ -92,10 +92,13 @@ void setup_pin(void){
   gpio_disable_pulls(IN2_M2);
   gpio_disable_pulls(IN1_M3);
   gpio_disable_pulls(IN2_M3);
-  gpio_disable_pulls(NFAUT_M1);
-  gpio_disable_pulls(NFAUT_M2);
-  gpio_disable_pulls(NFAUT_M3);
 
+  // Active les pull-up internes sur les broches nFAULT des DRV8872
+  // Ces broches sont en open-drain : sans pull-up, elles peuvent flotter
+  // Cela permet une lecture fiable de l'état de défaut (LOW = fault actif, HIGH = normal)
+  gpio_pull_up(NFAUT_M1);
+  gpio_pull_up(NFAUT_M2);
+  gpio_pull_up(NFAUT_M3);
 }
 
 
@@ -166,4 +169,15 @@ void apply_state_config(rocket_state_t state) {
 
   rgb.setPixelColor(0, color);
   rgb.show();
+}
+
+void low_power_delay_ms(uint32_t total_ms) {
+  const uint32_t step_ms = 10; // Pas de 10 ms
+  uint32_t remaining = total_ms;
+
+  while (remaining > 0) {
+      __wfi();                         // Attend une interruption (low power)
+      sleep_ms(step_ms);              // Retarde légèrement pour temporiser
+      remaining = (remaining > step_ms) ? (remaining - step_ms) : 0;
+  }
 }

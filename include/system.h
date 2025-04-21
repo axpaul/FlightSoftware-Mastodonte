@@ -12,9 +12,10 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 
-#include "hardware/timer.h"
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
+#include "hardware/timer.h"
+#include "hardware/sync.h"    // pour __wfi()
 
 #include "buzzer.h"
 #include "platform.h"

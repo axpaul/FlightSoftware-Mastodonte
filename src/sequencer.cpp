@@ -262,11 +262,6 @@ rocket_state_t seq_window(void) {
         debug_printf("[WINDOW] Alarm close timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
         debug_println("[WINDOW] Start deployment on timer");
 
-        gpio_acknowledge_irq(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE);
-        gpio_acknowledge_irq(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE);
-        gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, false);
-        gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
-
         apply_state_config(DEPLOY_TIMER);
         return DEPLOY_TIMER;
     }
@@ -284,11 +279,6 @@ rocket_state_t seq_window(void) {
 
         debug_printf("[WINDOW] Start deployment on algo @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
 
-        gpio_acknowledge_irq(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE);
-        gpio_acknowledge_irq(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE);
-        gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, false);
-        gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
-
         apply_state_config(DEPLOY_ALGO);
         return DEPLOY_ALGO;
     }
@@ -296,17 +286,24 @@ rocket_state_t seq_window(void) {
     return WINDOW;
 }
 
-
-rocket_state_t seq_deploy(void){
-
+rocket_state_t seq_deploy(void) {
     timestamp_t ts = compute_timestamp(get_absolute_time());
+
+    // === Déclenchement des moteurs de déploiement ===
+    group_all_motors.direction = true;  // Direction normale = déploiement
+    drv8872_group_activate_for_us(&group_all_motors, 3000000); // 3s
+    debug_println("[DEPLOY] Deployment motors activated for 3 seconds");
+
+    // === Démarrage timer d'atterrissage estimé ===
     add_alarm_in_us(THEORETICAL_DESCENT_US, seq_touchdown_timeout_callback, nullptr, true);
     debug_printf("[DEPLOY] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-    debug_printf("[DEPLOY] Touchdown expeted in %.2f s\n", THEORETICAL_DESCENT_US / 1e6);
+    debug_printf("[DEPLOY] Touchdown expected in %.2f s\n", THEORETICAL_DESCENT_US / 1e6);
 
+    // === Mise à jour de l’état et feedback ===
     apply_state_config(DESCEND);
     return DESCEND;
 }
+
 
 rocket_state_t seq_descend(void){
 
@@ -314,7 +311,12 @@ rocket_state_t seq_descend(void){
         timestamp_t ts = compute_timestamp(get_absolute_time());
 
         debug_printf("[DESCEND] Touchdown @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-        
+
+        gpio_acknowledge_irq(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE);
+        gpio_acknowledge_irq(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE);
+        gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, false);
+        gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
+    
         apply_state_config(TOUCHDOWN);
         return TOUCHDOWN;
 
@@ -325,6 +327,8 @@ rocket_state_t seq_descend(void){
 
 rocket_state_t seq_touchdown(void){
 
+    //debug_println("[DESCEND] Entering buzzer-only low-power loop...");
+    //buzzer_touchdown_loop();
     return TOUCHDOWN;
 }
 

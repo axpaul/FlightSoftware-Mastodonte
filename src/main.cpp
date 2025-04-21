@@ -38,13 +38,13 @@ void setup(void) {
     gpio_put(PIN_LED_STATUS, HIGH);  // Error indicator
   }
 
-  // === Motor driver initialization and test ===
-  debug_println("[SETUP] Initializing DRV8872 motor drivers...");
+  // // === Motor driver initialization and test ===
+  // debug_println("[SETUP] Initializing DRV8872 motor drivers...");  
   motor_diag_init();
   motor_diag_test_sequence();
   debug_println("[SETUP] Motor test sequence complete.");
 
-  // === Activate all motors (forward then reverse) ===
+  // // === Activate all motors (forward then reverse) ===
   debug_println("[SETUP] Activating all motors FORWARD for 3 seconds...");
   group_all_motors.direction = true;
   drv8872_group_activate_for_us(&group_all_motors, 3000000);

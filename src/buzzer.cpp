@@ -48,3 +48,22 @@ int64_t buzzerStopCallback(alarm_id_t, void*) {
   noTone(PIN_BUZZER);
   return 0;
 }
+
+// void buzzer_touchdown_loop(uint16_t freq = 400, uint16_t duration = 500, uint32_t period_ms = 60000) {
+//   while (true) {
+//     // Log (si tu veux)
+//     debug_println("[BUZZER] Touchdown mode: beep once then sleep...");
+
+//     // Beep une fois
+//     tone(PIN_BUZZER, freq);
+//     sleep_ms(duration);
+//     noTone(PIN_BUZZER);
+
+//     // Entrée en sommeil profond pour X secondes
+//     absolute_time_t wake_time = make_timeout_time_ms(period_ms - duration);
+//     debug_printf("[BUZZER] Sleeping for %.1f s\n", (period_ms - duration) / 1000.0f);
+//     sleep_goto_dormant_until(wake_time);
+
+//     // À la sortie de veille → boucle recommence
+//   }
+// }
