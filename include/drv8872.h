@@ -15,6 +15,7 @@
 
 #include "debug.h"
 #include "platform.h"            // Définitions des broches INx_Mx, NFAUT_Mx
+#include "log.h"
 
 // === Structures ===
 

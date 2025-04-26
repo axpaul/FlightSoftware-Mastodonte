@@ -47,6 +47,8 @@ void debug_printf(const char* fmt, ...) {
 
 #else
 
+bool debug_ready = false;
+
 int debug_begin(unsigned long baud) {return 0;}
 void debug_print(const String&) {}
 void debug_println(const String&) {}

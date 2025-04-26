@@ -27,43 +27,61 @@ void seq_gpio_callback(uint gpio, uint32_t events) {
     debug_printf("[INTERRUPT] Event mask = 0x%08X\n", events);
 
     switch (gpio) {
+           
         case PIN_SMITCH_N2:
             if ((events & GPIO_IRQ_EDGE_FALL) &&
                 (currentState == PRE_FLIGHT || currentState == PYRO_RDY)) {
                 triggerRBF = 1;
                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
                 debug_println("[INTERRUPT] RBF disarmed → transition to PYRO_RDY");
+                log_entryf("[INTERRUPT][GPIO %d] RBF removed", gpio);
             }
     
             if (events & GPIO_IRQ_EDGE_RISE) {
                 triggerRBF = 2;
                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
                 debug_println("[INTERRUPT] RBF inserted → return to PRE_FLIGHT");
+                log_entryf("[INTERRUPT][GPIO %d] RBF inserted", gpio);
             }
             break;
     
         case PIN_SMITCH_N1:
-            if ((events & GPIO_IRQ_EDGE_FALL) && currentState == PYRO_RDY) {
+            if ((events & GPIO_IRQ_EDGE_FALL) && (currentState == PYRO_RDY)) {
                 triggerJack = 1;
                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
                 debug_println("[INTERRUPT] Jack removed → LIFTOFF detected");
+                log_entryf("[INTERRUPT][GPIO %d] Jack removed", gpio);
+            }
+
+            if (events & GPIO_IRQ_EDGE_RISE) {
+                triggerJack = 0;
+                gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
+                debug_println("[INTERRUPT] Jack inserted → system can be armed");
+                log_entryf("[INTERRUPT][GPIO %d] Jack inserted", gpio);
             }
             break;
     
         case PIN_OCTO_N3:
-            if ((events & GPIO_IRQ_EDGE_RISE) && currentState == WINDOW) {
+            if ((events & GPIO_IRQ_EDGE_RISE) && (currentState == WINDOW)) {
                 triggerOcto3 = 1;
                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
                 debug_println("[INTERRUPT] Octo N3 triggered (HIGH)");
+                log_entryf("[INTERRUPT][GPIO %d] Octo N3 HIGH", gpio);
             }
             break;
     
         case PIN_OCTO_N4:
-            if ((events & GPIO_IRQ_EDGE_RISE) && currentState == WINDOW) {
+            if ((events & GPIO_IRQ_EDGE_RISE) && (currentState == WINDOW)) {
                 triggerOcto4 = 1;
                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
                 debug_println("[INTERRUPT] Octo N4 triggered (HIGH)");
+                log_entryf("[INTERRUPT][GPIO %d] Octo N4 HIGH", gpio);
             }
+            break;
+
+        default:
+            gpio_acknowledge_irq(gpio, events); // pour éviter blocage si GPIO inconnu
+            debug_printf("[INTERRUPT] Unhandled GPIO %d\n", gpio);
             break;
     }
 }    
@@ -71,31 +89,34 @@ void seq_gpio_callback(uint gpio, uint32_t events) {
 int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data) {
     timestamp_t ts = compute_timestamp(get_absolute_time());
 
-    debug_printf("[INTERRUPT] Open window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-    debug_printf("[INTERRUPT] Expected at T+%.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6);
+    debug_printf("[TIMER] Open window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+    debug_printf("[TIMER] Expected at T+%.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6);
+    log_entryf("[TIMER] Window opened");
 
     windowOpen = true;
 
-    debug_println("[SEQ] -10 percent apogee reached → WINDOW state activated");
+    debug_println("[TIMER] -10 percent apogee reached → WINDOW state activated");
     return 0;
 }
 
 int64_t seq_window_timeout_callback(alarm_id_t id, void* user_data) {
     timestamp_t ts = compute_timestamp(get_absolute_time());
 
-    debug_printf("[INTERRUPT] Close window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-    debug_printf("[INTERRUPT] Expected at T+%.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6);
+    debug_printf("[TIMER] Close window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+    debug_printf("[TIMER] Expected at T+%.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6);
+    log_entryf("[TIMER] Window closed");
 
     windowOpen = false;
 
-    debug_println("[SEQ] +10 percent climax reached → WINDOW state disabled");
+    debug_println("[TIMER] +10 percent climax reached → WINDOW state disabled");
     return 0;
 }
 
 int64_t seq_touchdown_timeout_callback(alarm_id_t id, void* user_data){
     timestamp_t ts = compute_timestamp(get_absolute_time());
 
-    debug_printf("[INTERRUPT] Close touchdown timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+    debug_printf("[TIMER] Close touchdown timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
+    log_entryf("[TIMER] Touchdown timer");
 
     triggerTouch = 1;
 
@@ -117,15 +138,19 @@ rocket_state_t seq_init(void){
     uint8_t octo3State = gpio_get(PIN_OCTO_N3);
     uint8_t octo4State = gpio_get(PIN_OCTO_N4);
 
+    debug_printf("[CHECK] Sequence initialized - entering PRE_FLIGHT state\n");
     debug_printf("[CHECK] Pin 26 (JACK)  = %d (%s)\n", jackState,  (jackState == 0 ? "REMOVED" : "CONTINUITY"));
     debug_printf("[CHECK] Pin 27 (RBF)   = %d (%s)\n", rbfState,   (rbfState  == 0 ? "REMOVED"     : "INSERTED"));
     debug_printf("[CHECK] Pin 3 (OCTO 1)   = %d (%s)\n", octo3State,   (octo3State  == 0 ? "LOW"     : "HIGH"));
     debug_printf("[CHECK] Pin 4 (OCTO 2)   = %d (%s)\n", octo4State,   (octo4State  == 0 ? "LOW"     : "HIGH"));
 
+    log_entryf("[CHECK] Initial GPIO states: JACK=%d, RBF=%d, OCTO3=%d, OCTO4=%d", jackState, rbfState, octo3State, octo4State);
+
+
     gpio_set_irq_callback(seq_gpio_callback);
 
     gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-    gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, true);
     gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, true);
 
@@ -212,16 +237,16 @@ rocket_state_t seq_pyroRdy(void){
         triggerJack = 0;
         timestamp_t ts = compute_timestamp(get_absolute_time());
 
-        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL);
+        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL);
         gpio_acknowledge_irq(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE);
-        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, false);
+        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, false);
         gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, false);
 
         add_alarm_in_us(WINDOW_OPEN_OFFSET_US, seq_is_window_open_callback, nullptr, true);
 
         debug_printf("[PYRO_RDY] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
         debug_printf("[PYRO_RDY] Window scheduled to open at T+%.2f s, duration %.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6, WINDOW_DURATION_US / 1e6);
-        
+
         apply_state_config(ASCEND);
         return ASCEND;
     }
@@ -278,7 +303,7 @@ rocket_state_t seq_window(void) {
         }
 
         debug_printf("[WINDOW] Start deployment on algo @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-
+        
         apply_state_config(DEPLOY_ALGO);
         return DEPLOY_ALGO;
     }
@@ -291,15 +316,15 @@ rocket_state_t seq_deploy(void) {
 
     // === Déclenchement des moteurs de déploiement ===
     group_all_motors.direction = true;  // Direction normale = déploiement
-    drv8872_group_activate_for_us(&group_all_motors, 3000000); // 3s
     debug_println("[DEPLOY] Deployment motors activated for 3 seconds");
+    drv8872_group_activate_for_us(&group_all_motors, 3000000); // 3s
 
     // === Démarrage timer d'atterrissage estimé ===
     add_alarm_in_us(THEORETICAL_DESCENT_US, seq_touchdown_timeout_callback, nullptr, true);
     debug_printf("[DEPLOY] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
     debug_printf("[DEPLOY] Touchdown expected in %.2f s\n", THEORETICAL_DESCENT_US / 1e6);
-
-    // === Mise à jour de l’état et feedback ===
+    
+    log_entryf("[DEPLOY] Motors and Touchdown timer");
     apply_state_config(DESCEND);
     return DESCEND;
 }
@@ -317,6 +342,7 @@ rocket_state_t seq_descend(void){
         gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, false);
         gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
     
+        log_entryf("[SEQ] Touchdown detected");
         apply_state_config(TOUCHDOWN);
         return TOUCHDOWN;
 
@@ -327,309 +353,6 @@ rocket_state_t seq_descend(void){
 
 rocket_state_t seq_touchdown(void){
 
-    //debug_println("[DESCEND] Entering buzzer-only low-power loop...");
-    //buzzer_touchdown_loop();
     return TOUCHDOWN;
 }
 
-
-
-// // -------------------------------------------------------------
-// // # Project : FlightSoftware-Mastodonte
-// // # File    : sequencer.cpp
-// // # Author  : Paul Miailhe
-// // # Date    : 2025-04-05
-// // # Object  : 
-// // -------------------------------------------------------------
-
-// #include "sequencer.h"
-// #include "log.h"
-
-// rocket_state_t currentState = PRE_FLIGHT;
-// alarm_id_t windowAlarmId = -1;
-
-// volatile uint8_t triggerRBF = 0;
-// volatile uint8_t triggerJack = 0;
-// volatile uint8_t triggerOcto3 = 0;
-// volatile uint8_t triggerOcto4 = 0;
-// volatile uint8_t triggerTouch = 0;
-
-// bool windowOpen = false;
-
-// void seq_gpio_callback(uint gpio, uint32_t events) {
-//     timestamp_t ts = compute_timestamp(get_absolute_time());
-//     debug_printf("[INTERRUPT] GPIO %d Event @ %02lu:%02lu.%03lu.%03lu\n",
-//                  gpio, ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//     debug_printf("[INTERRUPT] Event mask = 0x%08X\n", events);
-
-//     char buffer[128];
-
-//     switch (gpio) {
-//         case PIN_SMITCH_N2:
-//             if ((events & GPIO_IRQ_EDGE_FALL) &&
-//                 (currentState == PRE_FLIGHT || currentState == PYRO_RDY)) {
-//                 triggerRBF = 1;
-//                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
-//                 debug_println("[INTERRUPT] RBF disarmed → transition to PYRO_RDY");
-//                 snprintf(buffer, sizeof(buffer), "[LOG] RBF removed on GPIO %d", gpio);
-//                 log_entry(buffer);
-//             }
-
-//             if (events & GPIO_IRQ_EDGE_RISE) {
-//                 triggerRBF = 2;
-//                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-//                 debug_println("[INTERRUPT] RBF inserted → return to PRE_FLIGHT");
-//                 snprintf(buffer, sizeof(buffer), "[LOG] RBF inserted on GPIO %d", gpio);
-//                 log_entry(buffer);
-//             }
-//             break;
-
-//         case PIN_SMITCH_N1:
-//             if ((events & GPIO_IRQ_EDGE_FALL) && currentState == PYRO_RDY) {
-//                 triggerJack = 1;
-//                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_FALL);
-//                 debug_println("[INTERRUPT] Jack removed → LIFTOFF detected");
-//                 snprintf(buffer, sizeof(buffer), "[LOG] Jack removed on GPIO %d", gpio);
-//                 log_entry(buffer);
-//             }
-//             break;
-
-//         case PIN_OCTO_N3:
-//             if ((events & GPIO_IRQ_EDGE_RISE) && currentState == WINDOW) {
-//                 triggerOcto3 = 1;
-//                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-//                 debug_println("[INTERRUPT] Octo N3 triggered (HIGH)");
-//                 snprintf(buffer, sizeof(buffer), "[LOG] Octo N3 triggered on GPIO %d", gpio);
-//                 log_entry(buffer);
-//             }
-//             break;
-
-//         case PIN_OCTO_N4:
-//             if ((events & GPIO_IRQ_EDGE_RISE) && currentState == WINDOW) {
-//                 triggerOcto4 = 1;
-//                 gpio_acknowledge_irq(gpio, GPIO_IRQ_EDGE_RISE);
-//                 debug_println("[INTERRUPT] Octo N4 triggered (HIGH)");
-//                 snprintf(buffer, sizeof(buffer), "[LOG] Octo N4 triggered on GPIO %d", gpio);
-//                 log_entry(buffer);
-//             }
-//             break;
-//     }
-// }    
-
-// int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data) {
-//     timestamp_t ts = compute_timestamp(get_absolute_time());
-//     debug_printf("[INTERRUPT] Open window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//     debug_printf("[INTERRUPT] Expected at T+%.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6);
-//     debug_println("[SEQ] -10 percent apogee reached → WINDOW state activated");
-//     log_entry("[LOG] -10% apogee reached: opening window");
-//     windowOpen = true;
-//     return 0;
-// }
-
-// int64_t seq_window_timeout_callback(alarm_id_t id, void* user_data) {
-//     timestamp_t ts = compute_timestamp(get_absolute_time());
-//     debug_printf("[INTERRUPT] Close window timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//     debug_printf("[INTERRUPT] Expected at T+%.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6);
-//     debug_println("[SEQ] +10 percent climax reached → WINDOW state disabled");
-//     log_entry("[LOG] +10% apogee reached: closing window");
-//     windowOpen = false;
-//     return 0;
-// }
-
-// int64_t seq_touchdown_timeout_callback(alarm_id_t id, void* user_data){
-//     timestamp_t ts = compute_timestamp(get_absolute_time());
-//     debug_printf("[INTERRUPT] Close touchdown timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//     log_entry("[LOG] Touchdown timer expired");
-//     triggerTouch = 1;
-//     return 0;
-// }
-
-// void seq_reset_triggers() {
-//     triggerRBF = 0;
-//     triggerJack = 0;
-//     triggerOcto3 = 0;
-//     triggerOcto4 = 0;
-//     triggerTouch = 0;
-// }
-
-// rocket_state_t seq_init(void){
-//     log_entry("[LOG] Sequence initialized");
-
-//     uint8_t jackState = gpio_get(PIN_SMITCH_N1);
-//     uint8_t rbfState  = gpio_get(PIN_SMITCH_N2);
-//     uint8_t octo3State = gpio_get(PIN_OCTO_N3);
-//     uint8_t octo4State = gpio_get(PIN_OCTO_N4);
-
-//     debug_printf("[CHECK] Pin 26 (JACK)  = %d (%s)\n", jackState,  (jackState == 0 ? "REMOVED" : "CONTINUITY"));
-//     debug_printf("[CHECK] Pin 27 (RBF)   = %d (%s)\n", rbfState,   (rbfState  == 0 ? "REMOVED"     : "INSERTED"));
-//     debug_printf("[CHECK] Pin 3 (OCTO 1)   = %d (%s)\n", octo3State,   (octo3State  == 0 ? "LOW"     : "HIGH"));
-//     debug_printf("[CHECK] Pin 4 (OCTO 2)   = %d (%s)\n", octo4State,   (octo4State  == 0 ? "LOW"     : "HIGH"));
-
-//     gpio_set_irq_callback(seq_gpio_callback);
-
-//     gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-//     gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, true);
-//     gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, true);
-//     gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, true);
-
-//     irq_set_enabled(IO_IRQ_BANK0, true);
-
-//     apply_state_config(PRE_FLIGHT);
-//     return PRE_FLIGHT;
-// }
-
-// rocket_state_t seq_handle(void) {
-//     switch (currentState) {
-//         case PRE_FLIGHT:
-//             return seq_preLaunch();
-//         case PYRO_RDY:
-//             return seq_pyroRdy();
-//         case ASCEND:
-//             return seq_ascend();
-//         case WINDOW:
-//             return seq_window();
-//         case DEPLOY_ALGO:
-//         case DEPLOY_TIMER:
-//             return seq_deploy();
-//         case DESCEND:
-//             return seq_descend();
-//         case TOUCHDOWN:
-//             return seq_touchdown();
-//         default:
-//             return ERROR_SEQ;
-//     }
-// }
-
-// rocket_state_t seq_preLaunch(void) {
-//     if (triggerRBF == 1) {
-//         triggerRBF = 0;
-//         debug_println("[SEQ] Transition to PYRO_RDY");
-//         log_entry("[LOG] Transition to PYRO_RDY");
-//         apply_state_config(PYRO_RDY);
-//         return PYRO_RDY;
-//     }
-//     return PRE_FLIGHT;
-// }
-
-// rocket_state_t seq_pyroRdy(void){
-//     if (triggerRBF == 2) {
-//         triggerRBF = 0;
-//         debug_println("[SEQ] RBF reinserted → return to PRE_FLIGHT");
-//         log_entry("[LOG] RBF reinserted: back to PRE_FLIGHT");
-//         apply_state_config(PRE_FLIGHT);
-//         return PRE_FLIGHT;
-//     }
-
-//     if (triggerJack == 1) {
-//         triggerJack = 0;
-//         timestamp_t ts = compute_timestamp(get_absolute_time());
-
-//         gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL);
-//         gpio_acknowledge_irq(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE);
-//         gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, false);
-//         gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, false);
-
-//         add_alarm_in_us(WINDOW_OPEN_OFFSET_US, seq_is_window_open_callback, nullptr, true);
-
-//         debug_printf("[PYRO_RDY] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//         debug_printf("[PYRO_RDY] Window scheduled to open at T+%.2f s, duration %.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6, WINDOW_DURATION_US / 1e6);
-//         debug_println("[SEQ] Liftoff → ASCEND");
-//         log_entry("[LOG] Jack removed: liftoff detected, start window alarm");
-//         apply_state_config(ASCEND);
-//         return ASCEND;
-//     }
-//     return PYRO_RDY;
-// }
-
-// rocket_state_t seq_ascend(void){
-//     if(windowOpen == true){
-//         timestamp_t ts = compute_timestamp(get_absolute_time());
-//         if (windowAlarmId != -1) {
-//             cancel_alarm(windowAlarmId);
-//         }
-
-//         windowAlarmId = add_alarm_in_us(WINDOW_DURATION_US, seq_window_timeout_callback, NULL, true);
-//         debug_printf("[ASCEND] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//         debug_printf("[ASCEND] Window closure timer started for %.2f s\n", WINDOW_DURATION_US / 1e6);
-//         debug_println("[SEQ] ASCEND → WINDOW");
-//         log_entry("[LOG] Window opened: timer started");
-//         apply_state_config(WINDOW);
-//         return WINDOW;
-//     }
-
-//     return ASCEND;
-// }
-
-// rocket_state_t seq_window(void) {
-//     if (windowOpen == false) {
-//         timestamp_t ts = compute_timestamp(get_absolute_time());
-//         if (windowAlarmId != -1) {
-//             cancel_alarm(windowAlarmId);
-//             debug_println("[WINDOW] Stop Window alarm");
-//         }
-
-//         debug_printf("[WINDOW] Alarm close timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//         debug_println("[WINDOW] Start deployment on timer");
-//         log_entry("[LOG] Deployment triggered by timeout");
-//         apply_state_config(DEPLOY_TIMER);
-//         return DEPLOY_TIMER;
-//     }
-
-//     if (triggerOcto3 == 1 || triggerOcto4 == 1) {
-//         timestamp_t ts = compute_timestamp(get_absolute_time());
-//         triggerOcto3 = 0;
-//         triggerOcto4 = 0;
-
-//         if (windowAlarmId != -1) {
-//             cancel_alarm(windowAlarmId);
-//             debug_println("[WINDOW] Stop Window alarm");
-//         }
-
-//         debug_printf("[WINDOW] Start deployment on algo @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//         log_entry("[LOG] Deployment triggered by sensor (Octo)");
-//         apply_state_config(DEPLOY_ALGO);
-//         return DEPLOY_ALGO;
-//     }
-
-//     return WINDOW;
-// }
-
-// rocket_state_t seq_deploy(void) {
-//     timestamp_t ts = compute_timestamp(get_absolute_time());
-
-//     group_all_motors.direction = true;
-//     drv8872_group_activate_for_us(&group_all_motors, 3000000);
-//     debug_println("[DEPLOY] Deployment motors activated for 3 seconds");
-//     log_entry("[LOG] Deployment motors activated");
-
-//     add_alarm_in_us(THEORETICAL_DESCENT_US, seq_touchdown_timeout_callback, nullptr, true);
-//     debug_printf("[DEPLOY] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//     debug_printf("[DEPLOY] Touchdown expected in %.2f s\n", THEORETICAL_DESCENT_US / 1e6);
-//     log_entry("[LOG] Touchdown timer started");
-
-//     apply_state_config(DESCEND);
-//     return DESCEND;
-// }
-
-// rocket_state_t seq_descend(void){
-//     if (triggerTouch == 1){
-//         timestamp_t ts = compute_timestamp(get_absolute_time());
-
-//         debug_printf("[DESCEND] Touchdown @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
-//         log_entry("[LOG] Touchdown detected");
-
-//         gpio_acknowledge_irq(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE);
-//         gpio_acknowledge_irq(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE);
-//         gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, false);
-//         gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
-
-//         apply_state_config(TOUCHDOWN);
-//         return TOUCHDOWN;
-//     }
-
-//     return DESCEND;
-// }
-
-// rocket_state_t seq_touchdown(void){
-//     return TOUCHDOWN;
-// }

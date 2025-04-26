@@ -9,30 +9,43 @@
 #ifndef LOG_H
 #define LOG_H
 
+#define LOG_ENABLED 1  // Utiliser 0 pour désactiver complètement le log
+
 #include <Arduino.h>
 #include <LittleFS.h>
+#include <cstdarg>  // pour va_list, va_start, vsnprintf
+#include <queue>
+#include <mutex>
+#include <string>
 
 #include "system.h"
 #include "debug.h" // Pour debug_printf()
 
-// Initialise le système de fichiers LittleFS en flash
-// Retourne true si montage réussi, sinon false
-bool log_init(void);
+#if LOG_ENABLED
 
-// Ajoute un message brut dans le fichier de log (sans timestamp)
-bool log_append(const char* message);
+    bool log_init(void);
+    bool log_append(const char* message);
+    bool log_entry(const char* event);
+    bool log_entryf(const char* fmt, ...) __attribute__((format(printf, 1, 2)));
+    void log_dump(void);
+    void log_clear(void);
+    bool log_near_full(void);
+    bool log_has_space(void);
+    void log_writer_task(void* arg);
 
-// Ajoute une entrée horodatée formatée automatiquement dans le log
-bool log_entry(const char* event);
+#else
 
-// Affiche le contenu du log sur la sortie série (debug_printf)
-void log_dump(void);
+    // Fonctions neutres quand le logging est désactivé
+    static inline bool log_init(void) { return true; }
+    static inline bool log_append(const char* message) { (void)message; return true; }
+    static inline bool log_entry(const char* event) { (void)event; return true; }
+    static inline bool log_entryf(const char* fmt, ...) { (void)fmt; return true; }
+    static inline void log_dump(void) {}
+    static inline void log_clear(void) {}
+    static inline bool log_near_full(void) { return false; }
+    static inline bool log_has_space(void) { return true; }
+    static inline void log_writer_task(void* arg) { (void)arg; }
 
-// Supprime le fichier de log existant de la flash
-void log_clear(void);
-
-// Vérifie si la mémoire est presque pleine (moins de 4 blocs libres)
-// Retourne true si proche de saturation
-bool log_near_full(void);
+#endif 
 
 #endif // LOG_H

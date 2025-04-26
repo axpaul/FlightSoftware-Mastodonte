@@ -1,5 +1,6 @@
-
 #include "log.h"
+
+#if LOG_ENABLED
 
 #define LOG_FILENAME "/log.txt"  // Nom du fichier de log
 
@@ -26,10 +27,21 @@ bool log_init(void) {
 
 // === Ajoute une ligne de texte brute dans le fichier de log ===
 bool log_append(const char* message) {
+    // Désactive toutes les interruptions
+    uint32_t prev_state = save_and_disable_interrupts();
+
     File f = LittleFS.open(LOG_FILENAME, "a");
-    if (!f) return false;
+    if (!f) {
+        restore_interrupts(prev_state);
+        return false;
+    }
+
     f.println(message);
     f.close();
+
+    // Restaure les interruptions à leur état précédent
+    restore_interrupts(prev_state);
+
     return true;
 }
 
@@ -39,9 +51,29 @@ bool log_entry(const char* event) {
     absolute_time_t now = get_absolute_time();
     timestamp_t ts = compute_timestamp(now);
     snprintf(buffer, sizeof(buffer), "[%02lu:%02lu.%03lu.%03lu] %s", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds, event);
-    debug_printf("[LOG ENTRY] %s\n", buffer);
+    //debug_printf("[LOG ENTRY] %s\n", buffer);
     return log_append(buffer);
 }
+
+bool log_entryf(const char* fmt, ...) {
+    char event[192];   // Message formaté
+    char buffer[256];  // Message final avec timestamp
+
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(event, sizeof(event), fmt, args);
+    va_end(args);
+
+    absolute_time_t now = get_absolute_time();
+    timestamp_t ts = compute_timestamp(now);
+
+    snprintf(buffer, sizeof(buffer), "[%02lu:%02lu.%03lu.%03lu] %s",
+             ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds, event);
+
+    //debug_printf("[LOG ENTRY] %s\n", buffer);
+    return log_append(buffer);  // <-- Ici, le seul point de sortie réel
+}
+
 
 // === Vérifie si le système de fichiers est presque plein ===
 bool log_near_full() {
@@ -58,19 +90,49 @@ void log_clear(void) {
     LittleFS.remove(LOG_FILENAME);
 }
 
-// === Affiche le contenu du log sur la sortie série ===
 void log_dump(void) {
+    static bool serial_was_open = false;
+
+    if (!Serial) {
+        Serial.begin(115200);
+        unsigned long t0 = millis();
+        while (!Serial && (millis() - t0 < 3000));
+    } else {
+        serial_was_open = true;
+    }
+
+    if (!Serial) {
+        return; // port toujours indisponible
+    }
+
     File f = LittleFS.open(LOG_FILENAME, "r");
     if (!f) {
-        debug_println("[LOG] No log file to dump");
+        Serial.println("[LOG] No log file to dump");
+        if (!serial_was_open) Serial.end();
         return;
     }
 
-    debug_println("[LOG] Dumping log content:");
+    Serial.println();
+    Serial.println("[LOG] Dumping log content:");
     while (f.available()) {
         String line = f.readStringUntil('\n');
-        debug_println(line.c_str());
+        Serial.println(line);
     }
+    Serial.println();
 
     f.close();
+    if (!serial_was_open) Serial.end();
 }
+
+bool log_has_space(void) {
+    FSInfo fs_info;
+    if (LittleFS.info(fs_info)) {
+        // On considère la mémoire "pleine" si plus de 95 % utilisée
+        return fs_info.usedBytes < (fs_info.totalBytes * 95 / 100);
+    } else {
+        // En cas d’erreur, on joue la sécurité
+        return false;
+    }
+}
+
+#endif

@@ -30,10 +30,10 @@ void setup(void) {
     debug_printf("[BOOT] Board: %s, FW: %s\n", BOARD_NAME_SYS, FW_VERSION);
     debug_printf("[BOOT] Battery Voltage: %.2f V\n", voltage_batt);
     debug_printf("[BOOT] MCU Temperature: %.2f °C\n", temperature);
-    gpio_put(PIN_LED_STATUS, LOW);  // OK indicator
+    gpio_put(PIN_LED_STATUS, HIGH);  // OK indicator
   } else {
     debug_println("[BOOT] Debug interface not initialized!");
-    gpio_put(PIN_LED_STATUS, HIGH);  // Error indicator
+    gpio_put(PIN_LED_STATUS, LOW);  // Error indicator
   }
 
   // === Initialisation du système de fichiers log ===
@@ -42,7 +42,6 @@ void setup(void) {
     debug_println("[ERROR] Failed to initialize LittleFS log system.");
     apply_state_config(ERROR_SEQ);
   } else {
-    log_entry("[BOOT] Logging system initialized.");
     // Afficher l'espace total et libre
     FSInfo fs_info;
     LittleFS.info(fs_info);
@@ -66,18 +65,41 @@ void setup(void) {
         debug_println("[BOOT] GP24 held LOW for 5s → Clearing log!");
         log_clear();
         break;
-      }
+      }   
       sleep_ms(50);
     }
   }
-  
 
 // === Launch main flight sequencer ===
+
+  log_entryf("[BOOT] System startup");
+  log_entryf("[BOOT] Temperature = %.2f °C", temperature);
+  log_entryf("[BOOT] Battery voltage = %.2f V", voltage_batt);
+
+  // Vérification des conditions 
+  if (!log_has_space()) {
+    log_entry("[BOOT] ERROR: Log memory is full.");
+    apply_state_config(ERROR_SEQ);
+    return;
+  }
+
+  if (temperature > 70.0f) {
+    log_entry("[BOOT] ERROR: Temperature too high (> 70°C).");
+    apply_state_config(ERROR_SEQ);
+    return;
+  }
+
+  if (voltage_batt <= 6.0f) {
+    log_entry("[BOOT] ERROR: Battery voltage too low (<= 6V).");
+    apply_state_config(ERROR_SEQ);
+    return;
+  }
+
   debug_println("[SETUP] Initializing flight sequencer...");
   seq_init();
-  debug_println("[SETUP] System is operational.");
-}
+  debug_println("[SETUP] System is operational");
 
+}
 
 void loop() {
   seq_handle();

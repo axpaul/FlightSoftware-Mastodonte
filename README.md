@@ -61,3 +61,51 @@ Declared in `platformio.ini`:
 </p>
 
 ---
+
+## 🚦 Flight Sequencer States
+
+The system is driven by a finite state machine (`sequencer.cpp`) that transitions through various mission phases.  
+Each state configures RGB LED color and buzzer behavior to provide **visual and audible feedback**.
+
+| State           | Color (LED)      | Buzzer Pattern                      | Description |
+|------------------|------------------|--------------------------------------|-------------|
+| `PRE_FLIGHT`     | 🟢 Green          | 🔈 Double soft beep (3s pause)       | System idle on ground, RBF and JACK expected. |
+| `PYRO_RDY`       | 🟡 Yellow         | 🔈 1 low beep per second             | Ready for liftoff, RBF removed, JACK still in. |
+| `ASCEND`         | 🔵 Blue           | 🔈 Very fast beeping                 | Liftoff confirmed, rocket in ascent. |
+| `WINDOW`         | 🔵 Cyan           | 🔈 Rapid alert beeping               | Deployment window is open (timed or triggered). |
+| `DEPLOY_ALGO`    | 🟠 Orange         | 🔈 Alternating mid beeps             | Deployment triggered via algorithm (sensor). |
+| `DEPLOY_TIMER`   | 🟠 Orange         | 🔈 Alternating mid beeps             | Deployment triggered via timer timeout. |
+| `DESCEND`        | 🟣 Magenta        | 🔈 Slow and regular beeping          | Descent under parachute. |
+| `TOUCHDOWN`      | 🟢 Green (steady) | 🔈 Long beep every 30 seconds        | Touchdown detected, safe recovery state. |
+| `ERROR_SEQ`      | 🔴 Red            | 🔈 Rapid high-pitched beeping        | System fault or invalid state transition. |
+
+---
+
+## State Transition Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> PRE_FLIGHT
+    PRE_FLIGHT --> PYRO_RDY : RBF removed
+    PYRO_RDY --> PRE_FLIGHT : RBF inserted
+    PYRO_RDY --> ASCEND : JACK removed
+    ASCEND --> WINDOW : T+window_open_offset
+    WINDOW --> DEPLOY_ALGO : Octo3 or Octo4 triggered
+    WINDOW --> DEPLOY_TIMER : timeout
+    DEPLOY_ALGO --> DESCEND : motors complete
+    DEPLOY_TIMER --> DESCEND : motors complete
+    DESCEND --> TOUCHDOWN : touchdown trigger
+    [*] --> ERROR_SEQ
+
+---
+
+## 🔘 User Button (GP24) — Log Dump & Erase
+
+A user-accessible button is connected to **GPIO 24** and is checked during system boot.
+
+- **Press and release**: Dumps log content to Serial @ **115200 baud**.
+- **Press and hold for 5 seconds**: Erases the entire log file from the onboard flash memory.
+
+This provides a fast and safe way to extract and reset logs without reflashing the system.
+
+---

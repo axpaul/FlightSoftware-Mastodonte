@@ -48,6 +48,7 @@ static void gpio_fault_callback(uint gpio, uint32_t events) {
 
 // === Initialisation de base ===
 void drv8872_init(drv8872_t* drv) {
+    log_entryf("[DRV] Init DRV8872 on IN1=%d IN2=%d", drv->in1_pin, drv->in2_pin);
     drv8872_stop(drv);
     _drv_ref = drv;
 }
@@ -60,27 +61,32 @@ drv8872_t* drv8872_get(uint8_t index) {
 
 // === Contrôles basiques ===
 void drv8872_forward(drv8872_t* drv) {
+    log_entryf("[DRV] Forward motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
     gpio_put(drv->in1_pin, 1);
     gpio_put(drv->in2_pin, 0);
 }
 
 void drv8872_reverse(drv8872_t* drv) {
+    log_entryf("[DRV] Reverse motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
     gpio_put(drv->in1_pin, 0);
     gpio_put(drv->in2_pin, 1);
 }
 
 void drv8872_brake(drv8872_t* drv) {
+    log_entryf("[DRV] Brake motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
     gpio_put(drv->in1_pin, 1);
     gpio_put(drv->in2_pin, 1);
 }
 
 void drv8872_stop(drv8872_t* drv) {
+    log_entryf("[DRV] Stop motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
     gpio_put(drv->in1_pin, 0);
     gpio_put(drv->in2_pin, 0);
 }
 
 // === Contrôles PWM ===
 void drv8872_forward_pwm(drv8872_t* drv, uint slice_num, uint level) {
+    log_entryf("[DRV][PWM] Forward PWM motor on pin %d - level %d", drv->in1_pin, level);
     gpio_set_function(drv->in1_pin, GPIO_FUNC_PWM);
     gpio_put(drv->in2_pin, 0);
     pwm_set_gpio_level(drv->in1_pin, level);
@@ -88,6 +94,7 @@ void drv8872_forward_pwm(drv8872_t* drv, uint slice_num, uint level) {
 }
 
 void drv8872_reverse_pwm(drv8872_t* drv, uint slice_num, uint level) {
+    log_entryf("[DRV][PWM] Reverse PWM motor on pin %d - level %d", drv->in2_pin, level);
     gpio_set_function(drv->in2_pin, GPIO_FUNC_PWM);
     gpio_put(drv->in1_pin, 0);
     pwm_set_gpio_level(drv->in2_pin, level);
@@ -100,12 +107,14 @@ bool drv8872_is_fault(drv8872_t* drv) {
 }
 
 void drv8872_setup_fault_interrupt(drv8872_t* drv) {
+    log_entryf("[DRV] Fault interrupt set up on pin %d", drv->fault_pin);
     if (!drv->fault_callback) return;
     gpio_set_irq_enabled_with_callback(drv->fault_pin, GPIO_IRQ_EDGE_FALL, true, gpio_fault_callback);
 }
 
 // === Activation groupe avec timer ===
 static int64_t drv8872_group_alarm_callback(alarm_id_t id, void* user_data) {
+    log_entry("[DRV_GROUP] stopping all motors");
     drv_group_timer_context_t* ctx = (drv_group_timer_context_t*)user_data;
     if (ctx) {
         for (uint8_t i = 0; i < ctx->group.motor_count; i++) {
@@ -114,7 +123,7 @@ static int64_t drv8872_group_alarm_callback(alarm_id_t id, void* user_data) {
             }
         }
         free(ctx);
-
+   
         // 🔍 Log d'état des moteurs après arrêt automatique
         debug_println("[DRV8872] Motors stopped by timer callback. Checking faults...");
         motor_diag_log_faults();
@@ -123,10 +132,12 @@ static int64_t drv8872_group_alarm_callback(alarm_id_t id, void* user_data) {
 }
 
 void drv8872_group_activate_for_us(drv8872_group_t* group, uint64_t duration_us) {
+
     if (!group || group->motor_count == 0) return;
 
     for (uint8_t i = 0; i < group->motor_count; i++) {
         if (group->motors[i]) {
+            log_entryf("[DRV_GROUP] Motor[%d]", i);
             if (group->direction) drv8872_forward(group->motors[i]);
             else drv8872_reverse(group->motors[i]);
         }
@@ -141,15 +152,24 @@ void drv8872_group_activate_for_us(drv8872_group_t* group, uint64_t duration_us)
 
 // === Diagnostic complet ===
 void motor_diag_init(void) {
+    log_entry("[MOTOR_DIAG] Logging motor fault states");
     drv8872_init(&motor1);
     drv8872_init(&motor2);
     drv8872_init(&motor3);
 }
 
 void motor_diag_log_faults(void) {
-    debug_printf("[MOTOR_DIAG] Fault M1: %s\n", drv8872_is_fault(&motor1) ? "YES" : "NO");
-    debug_printf("[MOTOR_DIAG] Fault M2: %s\n", drv8872_is_fault(&motor2) ? "YES" : "NO");
-    debug_printf("[MOTOR_DIAG] Fault M3: %s\n", drv8872_is_fault(&motor3) ? "YES" : "NO");
+    bool fault1 = drv8872_is_fault(&motor1);
+    bool fault2 = drv8872_is_fault(&motor2);
+    bool fault3 = drv8872_is_fault(&motor3);  
+
+    debug_printf("[MOTOR_DIAG] Fault M1: %s\n", fault1 ? "YES" : "NO");
+    debug_printf("[MOTOR_DIAG] Fault M2: %s\n", fault2 ? "YES" : "NO");
+    debug_printf("[MOTOR_DIAG] Fault M3: %s\n", fault3 ? "YES" : "NO");
+
+    log_entryf("[MOTOR_DIAG] Fault M1: %s", fault1 ? "YES" : "NO");
+    log_entryf("[MOTOR_DIAG] Fault M2: %s", fault2 ? "YES" : "NO");
+    log_entryf("[MOTOR_DIAG] Fault M3: %s", fault3 ? "YES" : "NO");
 }
 
 void motor_diag_test_sequence(void) {
