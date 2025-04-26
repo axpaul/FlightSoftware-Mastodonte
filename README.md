@@ -81,24 +81,6 @@ Each state configures RGB LED color and buzzer behavior to provide **visual and 
 
 ---
 
-## State Transition Diagram
-
-```mermaid
-stateDiagram-v2
-    [*] --> PRE_FLIGHT
-    PRE_FLIGHT --> PYRO_RDY : RBF removed
-    PYRO_RDY --> PRE_FLIGHT : RBF inserted
-    PYRO_RDY --> ASCEND : JACK removed
-    ASCEND --> WINDOW : T+window_open_offset
-    WINDOW --> DEPLOY_ALGO : Octo3 or Octo4 triggered
-    WINDOW --> DEPLOY_TIMER : timeout
-    DEPLOY_ALGO --> DESCEND : motors complete
-    DEPLOY_TIMER --> DESCEND : motors complete
-    DESCEND --> TOUCHDOWN : touchdown trigger
-    [*] --> ERROR_SEQ
-
----
-
 ## 🔘 User Button (GP24) — Log Dump & Erase
 
 A user-accessible button is connected to **GPIO 24** and is checked during system boot.
