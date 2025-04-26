@@ -63,8 +63,9 @@ void setup_pin(void){
   gpio_init(IN2_M3);
   gpio_init(NFAUT_M1);            
   gpio_init(NFAUT_M2);         
-  gpio_init(NFAUT_M3);           
-  
+  gpio_init(NFAUT_M3);
+  gpio_init(24);
+    
   gpio_set_dir(PIN_LED_STATUS, GPIO_OUT);
   gpio_set_dir(PIN_SMITCH_N1, GPIO_IN);
   gpio_set_dir(PIN_SMITCH_N2, GPIO_IN);
@@ -79,7 +80,7 @@ void setup_pin(void){
   gpio_set_dir(NFAUT_M1, GPIO_IN);
   gpio_set_dir(NFAUT_M2, GPIO_IN);
   gpio_set_dir(NFAUT_M3, GPIO_IN);
-
+  gpio_set_dir(24, GPIO_IN);
 
   gpio_disable_pulls(PIN_LED_STATUS);   
   gpio_disable_pulls(PIN_SMITCH_N1);     
@@ -92,6 +93,8 @@ void setup_pin(void){
   gpio_disable_pulls(IN2_M2);
   gpio_disable_pulls(IN1_M3);
   gpio_disable_pulls(IN2_M3);
+  gpio_pull_up(24);
+  
 
   // Active les pull-up internes sur les broches nFAULT des DRV8872
   // Ces broches sont en open-drain : sans pull-up, elles peuvent flotter

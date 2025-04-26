@@ -20,6 +20,7 @@
 #include "buzzer.h"
 #include "system.h"
 #include "drv8872.h"
+#include "log.h"
 
 extern volatile uint8_t triggerRBF;
 

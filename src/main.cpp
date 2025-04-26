@@ -16,12 +16,10 @@
 #include "drv8872.h"
 
 void setup(void) {
-  debug_println("[SETUP] Initializing system...");
 
   adc_init();            // Initialize ADC module
   setup_pin();           // Configure GPIOs as defined in board/config
   setup_rgb();           // Enable onboard RGB
-  debug_println("[SETUP] GPIOs, ADC, and RGB initialized.");
 
   // === Read battery voltage and MCU temperature ===
   float voltage_batt = battery_read_voltage();
@@ -38,24 +36,43 @@ void setup(void) {
     gpio_put(PIN_LED_STATUS, HIGH);  // Error indicator
   }
 
-  // // === Motor driver initialization and test ===
-  // debug_println("[SETUP] Initializing DRV8872 motor drivers...");  
-  motor_diag_init();
-  motor_diag_test_sequence();
-  debug_println("[SETUP] Motor test sequence complete.");
+  // === Initialisation du système de fichiers log ===
+  debug_println("[SETUP] Initializing log system...");
+  if (!log_init()) {
+    debug_println("[ERROR] Failed to initialize LittleFS log system.");
+    apply_state_config(ERROR_SEQ);
+  } else {
+    log_entry("[BOOT] Logging system initialized.");
+    // Afficher l'espace total et libre
+    FSInfo fs_info;
+    LittleFS.info(fs_info);
+    debug_printf("[LOG] Used space (approx) : %lu bytes\n", fs_info.usedBytes);
+  }
 
-  // // === Activate all motors (forward then reverse) ===
-  debug_println("[SETUP] Activating all motors FORWARD for 3 seconds...");
-  group_all_motors.direction = true;
-  drv8872_group_activate_for_us(&group_all_motors, 3000000);
-  sleep_ms(3500);
+  debug_println("[BOOT] Checking GP24 state...");
 
-  debug_println("[SETUP] Activating all motors REVERSE for 3 seconds...");
-  group_all_motors.direction = false;
-  drv8872_group_activate_for_us(&group_all_motors, 3000000);
-  sleep_ms(3500);
+  // === Gestion du bouton GP24 ===
 
-  // === Launch main flight sequencer ===
+  absolute_time_t t_start = get_absolute_time();
+
+  if (gpio_get(24) == 0) {
+    debug_println("[BOOT] GP24 is LOW → Dumping logs now...");
+    log_dump(); // Dump immédiatement
+
+    // Ensuite, on attend pour voir s’il est maintenu 5s
+    absolute_time_t t_start = get_absolute_time();
+    while (gpio_get(24) == 0) {
+      if (absolute_time_diff_us(t_start, get_absolute_time()) > 5 * 1000 * 1000) {
+        debug_println("[BOOT] GP24 held LOW for 5s → Clearing log!");
+        log_clear();
+        break;
+      }
+      sleep_ms(50);
+    }
+  }
+  
+
+// === Launch main flight sequencer ===
   debug_println("[SETUP] Initializing flight sequencer...");
   seq_init();
   debug_println("[SETUP] System is operational.");
