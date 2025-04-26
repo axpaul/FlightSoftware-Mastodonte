@@ -81,7 +81,7 @@ Each state configures RGB LED color and buzzer behavior to provide **visual and 
 
 ---
 
-## 🔘 User Button (GP24) — Log Dump & Erase
+## 🔘 User Button USR (GP24) — Log Dump & Erase
 
 A user-accessible button is connected to **GPIO 24** and is checked during system boot.
 
