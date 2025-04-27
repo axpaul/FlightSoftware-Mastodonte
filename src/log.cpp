@@ -1,3 +1,11 @@
+// -------------------------------------------------------------
+// # Project : FlightSoftware-Mastodonte
+// # File    : log.cpp
+// # Author  : Paul Miailhe
+// # Date    : 2025-04-21
+// # Object  : Log interface for flash-based LittleFS (C++ only)
+// -------------------------------------------------------------
+
 #include "log.h"
 
 #if LOG_ENABLED
