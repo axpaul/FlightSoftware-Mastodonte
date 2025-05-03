@@ -17,6 +17,7 @@
 #include <queue>
 #include <mutex>
 #include <string>
+#include <deque>
 
 #include "system.h"
 #include "debug.h" // Pour debug_printf()
@@ -31,8 +32,8 @@
     void log_clear(void);
     bool log_near_full(void);
     bool log_has_space(void);
-    void log_writer_task(void* arg);
-
+    void log_flush(void);
+    
 #else
 
     // Fonctions neutres quand le logging est désactivé

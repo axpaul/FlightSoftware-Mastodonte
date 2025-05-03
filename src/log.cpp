@@ -12,6 +12,13 @@
 
 #define LOG_FILENAME "/log.txt"  // Nom du fichier de log
 
+#define LOG_BUFFER_MAX_MSGS 32
+#define LOG_BUFFER_MSG_SIZE 256
+
+static char log_buffer[LOG_BUFFER_MAX_MSGS][LOG_BUFFER_MSG_SIZE];
+static volatile uint8_t log_buffer_head = 0; // Où écrire
+static volatile uint8_t log_buffer_tail = 0; // Où lire
+
 // === Initialisation du système de fichiers LittleFS ===
 bool log_init(void) {
     debug_println("[LOG] Trying LittleFS.begin()...");
@@ -35,53 +42,76 @@ bool log_init(void) {
 
 // === Ajoute une ligne de texte brute dans le fichier de log ===
 bool log_append(const char* message) {
-    // Désactive toutes les interruptions
-    uint32_t prev_state = save_and_disable_interrupts();
-
     File f = LittleFS.open(LOG_FILENAME, "a");
-    if (!f) {
-        restore_interrupts(prev_state);
-        return false;
-    }
+    if (!f) return false;
 
     f.println(message);
     f.close();
+    return true;
+}
 
-    // Restaure les interruptions à leur état précédent
-    restore_interrupts(prev_state);
+void log_flush(void) {
+    while (log_buffer_tail != log_buffer_head) {
+        log_append(log_buffer[log_buffer_tail]);
+        log_buffer_tail = (log_buffer_tail + 1) % LOG_BUFFER_MAX_MSGS;
+    }
+}
+
+// === Ajoute une entrée horodatée dans le log ===
+
+bool log_entry(const char* event) {
+    absolute_time_t now = get_absolute_time();
+    timestamp_t ts = compute_timestamp(now);
+
+    char temp[LOG_BUFFER_MSG_SIZE];
+    snprintf(temp, sizeof(temp), "[%02lu:%02lu.%03lu.%03lu] %s",
+             ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds, event);
+
+    uint8_t next_head = (log_buffer_head + 1) % LOG_BUFFER_MAX_MSGS;
+
+    if (next_head == log_buffer_tail) {
+        debug_println("[LOG] Buffer full, dropping message.");
+        return false; // Buffer plein
+    }
+
+    strncpy(log_buffer[log_buffer_head], temp, LOG_BUFFER_MSG_SIZE - 1);
+    log_buffer[log_buffer_head][LOG_BUFFER_MSG_SIZE - 1] = '\0'; // Safety null-termination
+    log_buffer_head = next_head;
 
     return true;
 }
 
-// === Ajoute une entrée horodatée dans le log ===
-bool log_entry(const char* event) {
-    char buffer[256];
-    absolute_time_t now = get_absolute_time();
-    timestamp_t ts = compute_timestamp(now);
-    snprintf(buffer, sizeof(buffer), "[%02lu:%02lu.%03lu.%03lu] %s", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds, event);
-    //debug_printf("[LOG ENTRY] %s\n", buffer);
-    return log_append(buffer);
-}
-
 bool log_entryf(const char* fmt, ...) {
     char event[192];   // Message formaté
-    char buffer[256];  // Message final avec timestamp
+    char full[LOG_BUFFER_MSG_SIZE];  // Message final avec timestamp
 
+    // Formattage du message avec les arguments
     va_list args;
     va_start(args, fmt);
     vsnprintf(event, sizeof(event), fmt, args);
     va_end(args);
 
+    // Création du timestamp
     absolute_time_t now = get_absolute_time();
     timestamp_t ts = compute_timestamp(now);
 
-    snprintf(buffer, sizeof(buffer), "[%02lu:%02lu.%03lu.%03lu] %s",
+    snprintf(full, sizeof(full), "[%02lu:%02lu.%03lu.%03lu] %s",
              ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds, event);
 
-    //debug_printf("[LOG ENTRY] %s\n", buffer);
-    return log_append(buffer);  // <-- Ici, le seul point de sortie réel
-}
+    // Écriture dans le buffer circulaire
+    uint8_t next_head = (log_buffer_head + 1) % LOG_BUFFER_MAX_MSGS;
 
+    if (next_head == log_buffer_tail) {
+        debug_println("[LOG] Buffer full, dropping formatted message.");
+        return false; // Buffer plein
+    }
+
+    strncpy(log_buffer[log_buffer_head], full, LOG_BUFFER_MSG_SIZE - 1);
+    log_buffer[log_buffer_head][LOG_BUFFER_MSG_SIZE - 1] = '\0'; // null-termination
+    log_buffer_head = next_head;
+
+    return true;
+}
 
 // === Vérifie si le système de fichiers est presque plein ===
 bool log_near_full() {

@@ -123,44 +123,44 @@ void apply_state_config(rocket_state_t state) {
       // === État : Pré-vol ===
       case PRE_FLIGHT:
           color = rgb.Color(0, 255, 0);             // Vert : prêt au sol
-          setBuzzer(true, 3000, 200, freqL);        // Double bip très espacé, discret
+          setBuzzer(true, 3000, 200, freq);        // Double bip très espacé, discret
           break;
 
       // === État : Pyro prêt ===
       case PYRO_RDY:
           color = rgb.Color(255, 255, 0);           // Jaune : Moteur prêt
-          setBuzzer(true, 1000, 500, freqL);        // Bip lent, 1 bip/sec
+          setBuzzer(true, 1000, 500, freq);        // Bip lent, 1 bip/sec
           break;
 
       // === État : Ascension ===
       case ASCEND:
           color = rgb.Color(0, 0, 255);             // Bleu : en montée
-          setBuzzer(true, 100, 75, freqL);          // Bip ultra rapide
+          setBuzzer(true, 100, 75, freq);          // Bip ultra rapide
           break;
 
       // === État : Fenêtre d’ouverture (timer ou algo) ===
       case WINDOW:
           color = rgb.Color(0, 255, 255);           // Cyan : fenêtre active
-          setBuzzer(true, 400, 300, freqL);         // Bip rapide (alerte)
+          setBuzzer(true, 400, 300, freq);         // Bip rapide (alerte)
           break;
 
       // === État : Déploiement par algo ou timer ===
       case DEPLOY_ALGO:
       case DEPLOY_TIMER:
           color = rgb.Color(255, 165, 0);           // Orange : déploiement
-          setBuzzer(true, 400, 400, freqL);         // Bip continu mais intermittent
+          setBuzzer(true, 400, 400, freq);         // Bip continu mais intermittent
           break;
 
       // === État : Descente sous parachute ===
       case DESCEND:
           color = rgb.Color(255, 0, 255);           // Magenta : descente
-          setBuzzer(true, 1000, 200, freqL);        // Bip lent et régulier
+          setBuzzer(true, 1000, 200, freq);        // Bip lent et régulier
           break;
 
       // === État : Atterrissage ===
       case TOUCHDOWN:
           color = rgb.Color(0, 255, 0);             // Vert fixe : au sol, OK
-          setBuzzer(true, 30000, 5000, freqL);      // Bip long toutes les 30 secondes
+          setBuzzer(true, 30000, 5000, freq);      // Bip long toutes les 30 secondes
           break;
 
       // === État : Erreur système / séquence ===

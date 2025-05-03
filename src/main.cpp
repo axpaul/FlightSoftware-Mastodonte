@@ -8,12 +8,16 @@
 
 #include <Arduino.h>
 
+#include "pico/multicore.h"
+
 #include "platform.h"
 #include "debug.h"
 #include "buzzer.h"
 #include "sequencer.h"
 #include "system.h"
 #include "drv8872.h"
+
+//void core1_main();
 
 void setup(void) {
 
@@ -46,6 +50,7 @@ void setup(void) {
     FSInfo fs_info;
     LittleFS.info(fs_info);
     debug_printf("[LOG] Used space (approx) : %lu bytes\n", fs_info.usedBytes);
+    //multicore_launch_core1(core1_main);
   }
 
   debug_println("[BOOT] Checking GP24 state...");
@@ -103,4 +108,12 @@ void setup(void) {
 
 void loop() {
   seq_handle();
+  log_flush();
 }
+
+// void core1_main() {
+//   while (true) {
+//       log_flush();  // écrit les messages si présents
+//       sleep_ms(10); // évite de saturer le CPU
+//   }
+// }
