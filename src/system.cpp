@@ -116,7 +116,7 @@ void setup_rgb(void){
 void apply_state_config(rocket_state_t state) {
   uint32_t color = 0;
   uint16_t freq = 2000;   // Fréquence standard du buzzer
-  uint16_t freqL = 300;   // Fréquence "low", plus grave (pour feedback discret)
+  //uint16_t freq = 300;   // Fréquence "low", plus grave (pour feedback discret)
 
   switch (state) {
 

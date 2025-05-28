@@ -138,19 +138,23 @@ rocket_state_t seq_init(void){
     uint8_t octo3State = gpio_get(PIN_OCTO_N3);
     uint8_t octo4State = gpio_get(PIN_OCTO_N4);
 
-    debug_printf("[CHECK] Sequence initialized - entering PRE_FLIGHT state\n");
+    //debug_printf("[CHECK] Sequence initialized - entering PRE_FLIGHT state\n");
+    debug_printf("[CHECK] Sequence initialized - entering PYRO_RDY state\n");
+    debug_printf("[CHECK] Timer value: APOGEE=%.2f s, WINDOW_OPEN=%.2f s, WINDOW_TIME=%.2f s\n", THEORETICAL_APOGEE_US / 1e6, WINDOW_OPEN_OFFSET_US / 1e6, WINDOW_DURATION_US / 1e6);
     debug_printf("[CHECK] Pin 26 (JACK)  = %d (%s)\n", jackState,  (jackState == 0 ? "REMOVED" : "CONTINUITY"));
     debug_printf("[CHECK] Pin 27 (RBF)   = %d (%s)\n", rbfState,   (rbfState  == 0 ? "REMOVED"     : "INSERTED"));
     debug_printf("[CHECK] Pin 3 (OCTO 1)   = %d (%s)\n", octo3State,   (octo3State  == 0 ? "LOW"     : "HIGH"));
     debug_printf("[CHECK] Pin 4 (OCTO 2)   = %d (%s)\n", octo4State,   (octo4State  == 0 ? "LOW"     : "HIGH"));
 
     log_entryf("[CHECK] Initial GPIO states: JACK=%d, RBF=%d, OCTO3=%d, OCTO4=%d", jackState, rbfState, octo3State, octo4State);
+    //log_entryf("[CHECK] Timer value: APOGEE=%.2f, WINDOW_OPEN=%.2f, WINDOW_TIME=%.2f", THEORETICAL_APOGEE_US / 1e6, WINDOW_OPEN_OFFSET_US / 1e6, WINDOW_DURATION_US / 1e6);
 
 
     gpio_set_irq_callback(seq_gpio_callback);
 
     gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
-    gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, true);
+    gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE, true);
     gpio_set_irq_enabled(PIN_OCTO_N3, GPIO_IRQ_EDGE_RISE, true);
     gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, true);
 
@@ -166,6 +170,7 @@ rocket_state_t seq_handle(void) {
     // === État : Pré-vol ===
         case PRE_FLIGHT:
             currentState = seq_preLaunch();
+            triggerRBF = 1; // Remove PRE_FLIGHT
             break;
 
         // === État : Prêt pyrotechnique ===
@@ -227,7 +232,7 @@ rocket_state_t seq_preLaunch(void) {
 rocket_state_t seq_pyroRdy(void){
     // Passage à PRE_FLIGHT après insertion du RBF
     if (triggerRBF == 2) {
-        triggerRBF = 0;
+        // triggerRBF = 0; // Remove PRE_FLIGHT
 
         apply_state_config(PRE_FLIGHT);
         return PRE_FLIGHT;
@@ -237,9 +242,12 @@ rocket_state_t seq_pyroRdy(void){
         triggerJack = 0;
         timestamp_t ts = compute_timestamp(get_absolute_time());
 
-        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL);
+        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL);
+        gpio_acknowledge_irq(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE);
         gpio_acknowledge_irq(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE);
-        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, false);
+
+        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, false);
+        gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_RISE, false);
         gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_FALL | GPIO_IRQ_EDGE_RISE, false);
 
         add_alarm_in_us(WINDOW_OPEN_OFFSET_US, seq_is_window_open_callback, nullptr, true);

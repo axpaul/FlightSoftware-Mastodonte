@@ -88,17 +88,17 @@ void setup(void) {
     return;
   }
 
-  if (temperature > 70.0f) {
-    log_entry("[BOOT] ERROR: Temperature too high (> 70°C).");
-    apply_state_config(ERROR_SEQ);
-    return;
-  }
+  // if (temperature > 70.0f) {
+  //   log_entry("[BOOT] ERROR: Temperature too high (> 70°C).");
+  //   apply_state_config(ERROR_SEQ);
+  //   return;
+  // }
 
-  if (voltage_batt <= 6.0f) {
-    log_entry("[BOOT] ERROR: Battery voltage too low (<= 6V).");
-    apply_state_config(ERROR_SEQ);
-    return;
-  }
+  // if (voltage_batt <= 6.0f) {
+  //   log_entry("[BOOT] ERROR: Battery voltage too low (<= 6V).");
+  //   apply_state_config(ERROR_SEQ);
+  //   return;
+  // }
 
   debug_println("[SETUP] Initializing flight sequencer...");
   seq_init();
@@ -110,10 +110,3 @@ void loop() {
   seq_handle();
   log_flush();
 }
-
-// void core1_main() {
-//   while (true) {
-//       log_flush();  // écrit les messages si présents
-//       sleep_ms(10); // évite de saturer le CPU
-//   }
-// }

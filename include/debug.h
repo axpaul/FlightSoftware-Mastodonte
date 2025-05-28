@@ -9,7 +9,7 @@
 #ifndef DEBUG_HEADER_FILE
 #define DEBUG_HEADER_FILE
 
-#define DEBUG_ENABLED true
+#define DEBUG_ENABLED false
 
 #define DEBUG_TIMEOUT_MS 10000
 
