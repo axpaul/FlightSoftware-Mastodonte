@@ -94,11 +94,11 @@ void setup(void) {
   //   return;
   // }
 
-  // if (voltage_batt <= 6.0f) {
-  //   log_entry("[BOOT] ERROR: Battery voltage too low (<= 6V).");
-  //   apply_state_config(ERROR_SEQ);
-  //   return;
-  // }
+  if (voltage_batt <= 6.0f) {
+    log_entry("[BOOT] ERROR: Battery voltage too low (<= 6V).");
+    apply_state_config(ERROR_SEQ);
+    return;
+  }
 
   debug_println("[SETUP] Initializing flight sequencer...");
   seq_init();
