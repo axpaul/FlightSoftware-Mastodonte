@@ -16,6 +16,8 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 ## Features
 
 - Arduino framework (Earle Philhower core) on RP2040
+- Non-blocking continuous battery voltage monitoring via hardware timer (1 Hz frequency)
+- Smart LED battery warning (alternating state color/red blinking when VCC <= 6.0V)
 - Built-in WS2812B RGB LED control (no external wiring)
 - Passive buzzer management with programmable tone and timing
 - OLED display via I²C with auto-detection
@@ -23,6 +25,31 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 - CMSIS-DAP support for flashing and debugging (via SWD)
 - Modular C++ architecture (timers, state machines, IO abstraction)
 - Compatible with 16MB flash layout (1MB sketch / 15MB filesystem)
+
+---
+
+## Software Architecture
+
+The flight software is built with a highly modular C++ structure to enforce separation of concerns, safety-critical execution, and predictability.
+
+```mermaid
+graph TD
+    Main[main.cpp <br/> Orchestrator] -->|Initializes & Ticks| Sys[system.cpp <br/> Hardware Abstraction & Health]
+    Main -->|Ticks| Seq[sequencer.cpp <br/> Flight Sequencer FSM]
+    Seq -->|Logs events| Log[log.cpp <br/> LittleFS Flash Logging]
+    Seq -->|Triggers| Buzzer[buzzer.cpp <br/> PWM audio feedback]
+    Seq -->|Controls| Motors[drv8872.cpp <br/> Recovery H-Bridge]
+```
+
+### Module Breakdown
+
+- **`main.cpp` (Orchestrator)**: The main entry point. It handles high-level hardware initialization in `setup()` and schedules tasks (sequencer execution, background battery checks) in `loop()`.
+- **`sequencer.cpp` (Flight Logic)**: Manages the Finite State Machine (FSM) that drives the flight sequence (from `PRE_FLIGHT` to `TOUCHDOWN`). It handles external interrupts (RBF, Jack, Octocouplers) and schedules mission-critical events.
+- **`system.cpp` (Hardware Abstraction)**: Initializes GPIOs and ADCs. It also runs the background battery check via a repeating hardware timer and controls the onboard WS2812B RGB LED.
+- **`buzzer.cpp` (Audio Feedback)**: Drives the passive buzzer using a repeating timer to play non-blocking sound patterns corresponding to each flight state.
+- **`log.cpp` (Logging System)**: Manages flash operations using LittleFS to write flight reports. Writes are deferred to state transitions to avoid blocking critical flight logic.
+- **`drv8872.cpp` (Recovery Driver)**: Drives the H-bridges to control recovery motors during deployment.
+- **`platform.h` (Hardware Mapping)**: Central board configuration mapping GPIO pins to flight functions.
 
 ---
 
@@ -39,6 +66,7 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 | USB stack           | TinyUSB                  |
 | Toolchain           | `toolchain-rp2040-earlephilhower` |
 | Build system        | PlatformIO               |
+| Battery Monitor Pin | GP28 (ADC2)              |
 
 ---
 
@@ -78,6 +106,10 @@ Each state configures RGB LED color and buzzer behavior to provide **visual and 
 | `DESCEND`        | 🟣 Magenta        | 🔈 Slow and regular beeping          | Descent under parachute. |
 | `TOUCHDOWN`      | 🟢 Green (steady) | 🔈 Long beep every 30 seconds        | Touchdown detected, safe recovery state. |
 | `ERROR_SEQ`      | 🔴 Red            | 🔈 Rapid high-pitched beeping        | System fault or invalid state transition. |
+
+> [!TIP]
+> **Battery Warning Indication:**
+> If the battery voltage drops below **6.0V** during flight preparation (Pre-flight / Pyro Ready), the RGB LED will alternate between the **current state color** and **Red** every second. This alert is non-blocking to allow manual override but provides clear visual feedback of a low battery.
 
 ---
 

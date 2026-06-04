@@ -41,4 +41,11 @@ void setup_rgb(void);
 
 void apply_state_config(rocket_state_t state);
 
+// === Battery monitoring & LED state functions ===
+extern rocket_state_t currentState;
+
+uint32_t get_state_color(rocket_state_t state);
+void system_battery_monitor_init(void);
+void system_battery_check_tick(void);
+
 #endif

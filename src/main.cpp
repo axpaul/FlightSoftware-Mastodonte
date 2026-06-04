@@ -88,17 +88,14 @@ void setup(void) {
     return;
   }
 
-  // if (temperature > 70.0f) {
-  //   log_entry("[BOOT] ERROR: Temperature too high (> 70°C).");
-  //   apply_state_config(ERROR_SEQ);
-  //   return;
-  // }
-
   if (voltage_batt <= 6.0f) {
-    log_entry("[BOOT] ERROR: Battery voltage too low (<= 6V).");
-    apply_state_config(ERROR_SEQ);
-    return;
+    log_entry("[BOOT] WARNING: Battery voltage too low (<= 6V).");
+    debug_println("[BOOT] WARNING: Battery voltage too low!");
   }
+
+  debug_println("[SETUP] Initializing battery monitoring...");
+  system_battery_monitor_init();
+
 
   debug_println("[SETUP] Initializing flight sequencer...");
   seq_init();
@@ -108,5 +105,6 @@ void setup(void) {
 
 void loop() {
   seq_handle();
+  system_battery_check_tick();
   log_flush();
 }

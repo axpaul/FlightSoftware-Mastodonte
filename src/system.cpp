@@ -113,65 +113,119 @@ void setup_rgb(void){
   rgb.show();
 }
 
+// --- Variables internes pour la surveillance batterie ---
+volatile uint8_t trigger_battery_check = 0;
+static struct repeating_timer battery_timer;
+static bool battery_is_low = false;
+static bool blink_state = false;
+
+// Callback déclenchée par le timer matériel toutes les secondes (contexte ISR)
+bool battery_timer_callback(struct repeating_timer *t) {
+  trigger_battery_check = 1;
+  return true; // Demande de répéter le timer
+}
+
+// Initialisation du monitoring de batterie
+void system_battery_monitor_init(void) {
+  add_repeating_timer_ms(1000, battery_timer_callback, NULL, &battery_timer);
+}
+
+// Table de correspondance des couleurs de la LED selon l'état
+uint32_t get_state_color(rocket_state_t state) {
+  switch (state) {
+      case PRE_FLIGHT:   return rgb.Color(0, 255, 0);     // Vert : prêt au sol
+      case PYRO_RDY:     return rgb.Color(255, 255, 0);   // Jaune : Moteur prêt
+      case ASCEND:       return rgb.Color(0, 0, 255);     // Bleu : en montée
+      case WINDOW:       return rgb.Color(0, 255, 255);   // Cyan : fenêtre active
+      case DEPLOY_ALGO:
+      case DEPLOY_TIMER: return rgb.Color(255, 165, 0);   // Orange : déploiement
+      case DESCEND:      return rgb.Color(255, 0, 255);   // Magenta : descente
+      case TOUCHDOWN:    return rgb.Color(0, 255, 0);     // Vert fixe : au sol, OK
+      case ERROR_SEQ:    
+      default:           return rgb.Color(255, 0, 0);     // Rouge : erreur
+  }
+}
+
+// Fonction de tick appelée dans la boucle principale
+void system_battery_check_tick(void) {
+  if (trigger_battery_check == 1) {
+    trigger_battery_check = 0; // Acquittement du drapeau
+    
+    float voltage = battery_read_voltage();
+    
+    if (voltage <= 6.0f) {
+      battery_is_low = true;
+    } else {
+      battery_is_low = false;
+    }
+    
+    // Si la batterie est basse, on applique l'alternance LED
+    if (battery_is_low) {
+      if (blink_state) {
+        rgb.setPixelColor(0, rgb.Color(255, 0, 0)); // Rouge (Alerte)
+      } else {
+        rgb.setPixelColor(0, get_state_color(currentState)); // Couleur de l'état actuel
+      }
+      rgb.show();
+      blink_state = !blink_state;
+    }
+  }
+}
+
 void apply_state_config(rocket_state_t state) {
-  uint32_t color = 0;
-  uint16_t freq = 2000;   // Fréquence standard du buzzer
-  //uint16_t freq = 300;   // Fréquence "low", plus grave (pour feedback discret)
+  uint32_t color = get_state_color(state);
+  //uint16_t freq = 2000;   // Fréquence standard du buzzer
+  uint16_t freq = 100;   // Fréquence "low", plus grave (pour feedback discret)
 
   switch (state) {
 
       // === État : Pré-vol ===
       case PRE_FLIGHT:
-          color = rgb.Color(0, 255, 0);             // Vert : prêt au sol
           setBuzzer(true, 3000, 200, freq);        // Double bip très espacé, discret
           break;
 
       // === État : Pyro prêt ===
       case PYRO_RDY:
-          color = rgb.Color(255, 255, 0);           // Jaune : Moteur prêt
           setBuzzer(true, 1000, 500, freq);        // Bip lent, 1 bip/sec
           break;
 
       // === État : Ascension ===
       case ASCEND:
-          color = rgb.Color(0, 0, 255);             // Bleu : en montée
           setBuzzer(true, 100, 75, freq);          // Bip ultra rapide
           break;
 
       // === État : Fenêtre d’ouverture (timer ou algo) ===
       case WINDOW:
-          color = rgb.Color(0, 255, 255);           // Cyan : fenêtre active
           setBuzzer(true, 400, 300, freq);         // Bip rapide (alerte)
           break;
 
       // === État : Déploiement par algo ou timer ===
       case DEPLOY_ALGO:
       case DEPLOY_TIMER:
-          color = rgb.Color(255, 165, 0);           // Orange : déploiement
           setBuzzer(true, 400, 400, freq);         // Bip continu mais intermittent
           break;
 
       // === État : Descente sous parachute ===
       case DESCEND:
-          color = rgb.Color(255, 0, 255);           // Magenta : descente
           setBuzzer(true, 1000, 200, freq);        // Bip lent et régulier
           break;
 
       // === État : Atterrissage ===
       case TOUCHDOWN:
-          color = rgb.Color(0, 255, 0);             // Vert fixe : au sol, OK
           setBuzzer(true, 30000, 5000, freq);      // Bip long toutes les 30 secondes
           break;
 
       // === État : Erreur système / séquence ===
       case ERROR_SEQ:
-          color = rgb.Color(255, 0, 0);             // Rouge : erreur
           setBuzzer(true, 500, 250, 500);           // Bip rapide et aigu
           break;
   }
 
-  rgb.setPixelColor(0, color);
-  rgb.show();
+  // Si la batterie n'est pas faible, on applique la couleur immédiatement.
+  if (!battery_is_low) {
+    rgb.setPixelColor(0, color);
+    rgb.show();
+  }
 }
 
 void low_power_delay_ms(uint32_t total_ms) {

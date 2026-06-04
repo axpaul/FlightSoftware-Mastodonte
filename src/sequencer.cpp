@@ -120,7 +120,6 @@ rocket_state_t seq_handle(void) {
     // === État : Pré-vol ===
         case PRE_FLIGHT:
             currentState = seq_preLaunch();
-            triggerRBF = 1; // Remove PRE_FLIGHT
             break;
 
         // === État : Prêt pyrotechnique ===
