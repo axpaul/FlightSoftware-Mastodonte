@@ -152,11 +152,17 @@ void system_battery_check_tick(void) {
     trigger_battery_check = 0; // Acquittement du drapeau
     
     float voltage = battery_read_voltage();
+    bool currently_low = (voltage <= 6.0f);
     
-    if (voltage <= 6.0f) {
-      battery_is_low = true;
-    } else {
-      battery_is_low = false;
+    // Si l'état de la batterie change
+    if (currently_low != battery_is_low) {
+      battery_is_low = currently_low;
+      
+      // Si la batterie redevient OK, on remet immédiatement la couleur fixe de l'état actuel
+      if (!battery_is_low) {
+        rgb.setPixelColor(0, get_state_color(currentState));
+        rgb.show();
+      }
     }
     
     // Si la batterie est basse, on applique l'alternance LED
