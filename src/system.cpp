@@ -181,7 +181,7 @@ void system_battery_check_tick(void) {
 void apply_state_config(rocket_state_t state) {
   uint32_t color = get_state_color(state);
   //uint16_t freq = 2000;   // Fréquence standard du buzzer
-  uint16_t freq = 100;   // Fréquence "low", plus grave (pour feedback discret)
+  uint16_t freq = 300;   // Fréquence "low", plus grave (pour feedback discret)
 
   switch (state) {
 
