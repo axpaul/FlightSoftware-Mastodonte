@@ -60,6 +60,19 @@
 #define BOARD_NAME_SYS "YD-RP2040 Mastodonte"
 #define FW_VERSION "v0.1.1"
 
-typedef enum {PRE_FLIGHT = 0, PYRO_RDY, ASCEND, WINDOW, DEPLOY_ALGO, DEPLOY_TIMER, DESCEND, TOUCHDOWN, ERROR_SEQ} rocket_state_t;
+/**
+ * @brief États de la machine d'état (FSM) du séquenceur de vol.
+ */
+typedef enum {
+    PRE_FLIGHT = 0,  // Au sol, en attente de l'armement (RBF inséré, Jack branché)
+    PYRO_RDY,        // Armé et prêt pour le décollage (RBF retiré, Jack branché)
+    ASCEND,          // Phase de montée active (Jack retiré)
+    WINDOW,          // Fenêtre d'ouverture du parachute de secours
+    DEPLOY_ALGO,     // Déploiement activé par capteur (apogée détectée)
+    DEPLOY_TIMER,    // Déploiement de secours activé par temporisation
+    DESCEND,         // Phase de descente sous parachute
+    TOUCHDOWN,       // Fusée au sol, fin de mission sécurisée
+    ERROR_SEQ        // État d'erreur ou d'anomalie système
+} rocket_state_t;
 
 #endif // BOARD_HEADER_FILE

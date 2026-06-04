@@ -3,7 +3,7 @@
 // # File    : buzzer.h
 // # Author  : Paul Miailhe
 // # Date    : 2025-04-05
-// # Object  : Passive buzzer control (tone or periodic beeping)
+// # Object  : Contrôle du buzzer passif (tonalité ou bips périodiques)
 // -------------------------------------------------------------
 
 #ifndef BUZZER_HEADER
@@ -20,14 +20,22 @@
 #include "hardware/sync.h"
 #include "hardware/structs/scb.h"
 
-// Appelle setBuzzer(true, 1000, 100); pour un bip toutes les secondes pendant 100 ms
-void setBuzzer(bool enable, uint16_t beatPeriodMs = 0, uint16_t beatDurationMs = 0, uint16_t frequency = 2000);
-//void buzzer_touchdown_loop(uint16_t freq = 400, uint16_t duration = 500, uint32_t period_ms = 60000);
-
-// Configuration persistante du buzzer
+/**
+ * @brief Structure de configuration persistante pour le contrôle du buzzer.
+ */
 struct BuzzerConfig {
-    uint16_t freq;
-    uint16_t duration;
-  };
+    uint16_t freq;      // Fréquence du signal en Hz
+    uint16_t duration;  // Durée d'activation du bip en millisecondes
+};
 
-#endif
+/**
+ * @brief Configure et active/désactive le signal sonore émis par le buzzer.
+ * 
+ * @param enable Active le buzzer si true, l'éteint si false.
+ * @param beatPeriodMs Période de répétition des bips en millisecondes (0 pour un son continu).
+ * @param beatDurationMs Durée d'émission de chaque bip en millisecondes.
+ * @param frequency Fréquence de la tonalité en Hz (par défaut 2000 Hz).
+ */
+void setBuzzer(bool enable, uint16_t beatPeriodMs = 0, uint16_t beatDurationMs = 0, uint16_t frequency = 2000);
+
+#endif // BUZZER_HEADER
