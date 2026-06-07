@@ -68,8 +68,8 @@ bool lps22hb_init(void) {
     lps_write_reg(LPS_CTRL_REG1, 0x32);
 
     // 3. Configuration de l'interruption : CTRL_REG3 (0x12)
-    // DRDY = 1 (bit 3 = 1) -> Active le signal Data-ready sur la broche d'interruption INT
-    lps_write_reg(0x12, 0x08);
+    // DRDY = 1 (bit 2 = 1) -> Active le signal Data-ready sur la broche d'interruption INT
+    lps_write_reg(0x12, 0x04);
     
     log_entry("[LPS22HB] Initialisation reussie (Mode 25 Hz, Interrupt DRDY active).");
     return true;
