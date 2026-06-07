@@ -86,7 +86,7 @@ void setup_pin(void){
 
   gpio_disable_pulls(PIN_LED_STATUS);   
   gpio_disable_pulls(PIN_SMITCH_N1);     
-  gpio_disable_pulls(PIN_SMITCH_N1);  
+  gpio_disable_pulls(PIN_SMITCH_N2);  
   gpio_disable_pulls(PIN_OCTO_N3);    
   gpio_disable_pulls(PIN_OCTO_N4);  
   gpio_disable_pulls(IN1_M1);

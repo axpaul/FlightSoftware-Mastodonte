@@ -7,6 +7,7 @@
 // -------------------------------------------------------------
 
 #include "lps22hb.h"
+#include "lsm6dsl.h"
 #include "hardware/i2c.h"
 #include "log.h"
 #include "debug.h"
@@ -24,6 +25,7 @@ static float P_cov[2][2] = {{1.0f, 0.0f}, {0.0f, 1.0f}};
 static float max_altitude = 0.0f;
 static uint32_t apogee_counter = 0;
 static uint32_t touchdown_confirm_counter = 0;
+static volatile float last_pressure_cached = 1013.25f;
 
 static const float Q_alt = 0.1f;
 static const float Q_vel = 0.5f;
@@ -90,7 +92,13 @@ float lps22hb_read_pressure(void) {
     }
 
     // Conversion en hPa (1 LSB = 1/4096 hPa)
-    return (float)raw_press / 4096.0f;
+    float press = (float)raw_press / 4096.0f;
+    last_pressure_cached = press;
+    return press;
+}
+
+float lps22hb_get_last_pressure(void) {
+    return last_pressure_cached;
 }
 
 float lps22hb_read_temperature(void) {
@@ -212,6 +220,9 @@ void lps22hb_drdy_callback(void) {
     // 1. Si on est au sol, on calibre la pression de référence
     if (currentState == PRE_FLIGHT) {
         lps22hb_calibrate_ground();
+        // Mettre à jour l'accéléromètre pour l'affichage au sol (sans bloquer)
+        float ax, ay, az;
+        lsm6dsl_read_accel(&ax, &ay, &az);
         return;
     }
 
@@ -220,10 +231,13 @@ void lps22hb_drdy_callback(void) {
         lps22hb_update_kalman();
         telemetry_update();
     }
-    // 3. Dans les autres états (ex: PYRO_RDY), on doit quand même lire la pression
+    // 3. Dans les autres états (ex: PYRO_RDY, TOUCHDOWN, etc.), on doit quand même lire la pression
     // pour acquitter l'interruption matérielle du capteur, sinon son pin INT reste bloqué.
     else {
         (void)lps22hb_read_pressure();
+        // Mettre à jour l'accéléromètre pour l'affichage
+        float ax, ay, az;
+        lsm6dsl_read_accel(&ax, &ay, &az);
     }
 
     // 3. Algorithme de détection d'apogée (uniquement en montée ou dans la fenêtre)

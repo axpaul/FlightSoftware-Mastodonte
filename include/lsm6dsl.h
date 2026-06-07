@@ -36,6 +36,11 @@ bool lsm6dsl_init(void);
 void lsm6dsl_read_accel(float* ax, float* ay, float* az);
 
 /**
+ * @brief Obtient la dernière accélération lue sans faire de transaction I2C.
+ */
+void lsm6dsl_get_last_accel(float* ax, float* ay, float* az);
+
+/**
  * @brief Lit les vitesses angulaires sur les 3 axes.
  * @param gx Pointeur vers le float qui recevra la vitesse angulaire X en dps.
  * @param gy Pointeur vers le float qui recevra la vitesse angulaire Y en dps.

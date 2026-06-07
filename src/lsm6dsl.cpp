@@ -33,6 +33,9 @@ static void lsm_read_regs(uint8_t start_reg, uint8_t *dst, size_t len) {
 // --- API Publique ---
 
 static bool imu_present = false;
+static volatile float last_accel_x_cached = 0.0f;
+static volatile float last_accel_y_cached = 0.0f;
+static volatile float last_accel_z_cached = 1.0f; // par défaut 1g vertical
 
 bool lsm6dsl_init(void) {
     // 1. Lecture du WHO_AM_I pour vérifier la présence du capteur sur le bus
@@ -82,6 +85,16 @@ void lsm6dsl_read_accel(float* ax, float* ay, float* az) {
     *ax = (float)raw_x * 0.488f / 1000.0f;
     *ay = (float)raw_y * 0.488f / 1000.0f;
     *az = (float)raw_z * 0.488f / 1000.0f;
+
+    last_accel_x_cached = *ax;
+    last_accel_y_cached = *ay;
+    last_accel_z_cached = *az;
+}
+
+void lsm6dsl_get_last_accel(float* ax, float* ay, float* az) {
+    *ax = last_accel_x_cached;
+    *ay = last_accel_y_cached;
+    *az = last_accel_z_cached;
 }
 
 void lsm6dsl_read_gyro(float* gx, float* gy, float* gz) {

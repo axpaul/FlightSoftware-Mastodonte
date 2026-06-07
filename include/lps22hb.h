@@ -37,6 +37,11 @@ bool lps22hb_init(void);
 float lps22hb_read_pressure(void);
 
 /**
+ * @brief Obtient la derniere pression brute lue par le capteur (sans faire de transaction I2C).
+ */
+float lps22hb_get_last_pressure(void);
+
+/**
  * @brief Lit la température actuelle du capteur en °C.
  * @return La température mesurée en °C.
  */
