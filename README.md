@@ -15,16 +15,14 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 
 ## Features
 
-- Arduino framework (Earle Philhower core) on RP2040
-- Non-blocking continuous battery voltage monitoring via hardware timer (1 Hz frequency)
-- Smart LED battery warning (alternating state color/red blinking when VCC <= 6.0V)
-- Built-in WS2812B RGB LED control (no external wiring)
-- Passive buzzer management with programmable tone and timing
-- OLED display via I²C with auto-detection
-- Debug interface with optional serial logging (timeout-protected)
-- CMSIS-DAP support for flashing and debugging (via SWD)
-- Modular C++ architecture (timers, state machines, IO abstraction)
-- Compatible with 16MB flash layout (1MB sketch / 15MB filesystem)
+- **Pico SDK Native Core**: Custom low-level registers-only I2C driver for sensors on `i2c1` (GP6/GP7) operating at 400 kHz.
+- **1D Kalman Filtering**: Estimator running at 25 Hz synchronized on `GP5` (DRDY) hardware interrupt to track altitude and vertical velocity.
+- **Apogee Detection**: Redundant multi-sensor detection combining dual optocouplers and Kalman filter apogee trigger ($z > 15\text{ m}$ and $v_z \le -1.0\text{ m/s}$ for 5 consecutive samples).
+- **Safety Auto-Bypass & Alarm**: Automatic sensor health autotest at boot; if the barometer is absent, the system emits 3 bips (instead of 2) and falls back safely to **Windowing Only Flight Mode**.
+- **Non-blocking battery monitoring**: Continuous voltage monitoring via hardware timer (1 Hz frequency) with smart LED warnings when $V_{cc} \le 6.0\text{V}$.
+- **H-Bridge Recovery Driver**: Autonomous safety control for recovery motors with temporary startup current spike bypass at liftoff.
+- **USB Mass Storage (MSC)**: Virtual read-only log dump simulator via USB serial, and physical GP24 button to dump/clear LittleFS logs.
+- **CMSIS-DAP support**: Flashing and debug support (SWD).
 
 ---
 
@@ -39,17 +37,20 @@ graph TD
     Seq -->|Logs events| Log[log.cpp <br/> LittleFS Flash Logging]
     Seq -->|Triggers| Buzzer[buzzer.cpp <br/> PWM audio feedback]
     Seq -->|Controls| Motors[drv8872.cpp <br/> Recovery H-Bridge]
+    Seq -->|Acquires via GP5 DRDY| Baro[lps22hb.cpp <br/> Low-level Barometer]
+    Baro -->|Estimates altitude/velocity| Kalman[1D Kalman Filter]
+    Seq -->|Reads acceleration| IMU[lsm6dsl.cpp <br/> Low-level IMU]
 ```
 
 ### Module Breakdown
 
-- **`main.cpp` (Orchestrator)**: The main entry point. It handles high-level hardware initialization in `setup()` and schedules tasks (sequencer execution, background battery checks) in `loop()`.
-- **`sequencer.cpp` (Flight Logic)**: Manages the Finite State Machine (FSM) that drives the flight sequence (from `PRE_FLIGHT` to `TOUCHDOWN`). It handles external interrupts (RBF, Jack, Octocouplers) and schedules mission-critical events.
-- **`system.cpp` (Hardware Abstraction)**: Initializes GPIOs and ADCs. It also runs the background battery check via a repeating hardware timer and controls the onboard WS2812B RGB LED.
-- **`buzzer.cpp` (Audio Feedback)**: Drives the passive buzzer using a repeating timer to play non-blocking sound patterns corresponding to each flight state.
-- **`log.cpp` (Logging System)**: Manages flash operations using LittleFS to write flight reports. Writes are deferred to state transitions to avoid blocking critical flight logic.
-- **`drv8872.cpp` (Recovery Driver)**: Drives the H-bridges to control recovery motors during deployment.
-- **`platform.h` (Hardware Mapping)**: Central board configuration mapping GPIO pins to flight functions.
+- **`main.cpp` (Orchestrator)**: Handles boot check, sets up diagnostic logs/bips, configures GP5 interrupts, and runs the main loop.
+- **`sequencer.cpp` (Flight Logic)**: Drives the Finite State Machine (`PRE_FLIGHT` to `TOUCHDOWN`), implements the 1D Kalman filter loop on sensor interrupts, and triggers parachute deployment.
+- **`lps22hb.cpp` & `lsm6dsl.cpp` (Sensors)**: Low-level native Pico SDK driver implementations for the barometer and IMU.
+- **`system.cpp` (Hardware Abstraction)**: Manages physical pins, status RGB LED, and ADC battery checks.
+- **`buzzer.cpp` (Audio Feedback)**: Drives the passive buzzer using a hardware PWM slice.
+- **`log.cpp` (Logging System)**: Thread-safe, non-blocking log writer using LittleFS on flash.
+- **`drv8872.cpp` (Recovery Driver)**: Controls the recovery deployment H-bridge.
 
 ---
 
@@ -67,6 +68,7 @@ graph TD
 | Toolchain           | `toolchain-rp2040-earlephilhower` |
 | Build system        | PlatformIO               |
 | Battery Monitor Pin | GP28 (ADC2)              |
+| Baro INT (DRDY) Pin | GP5                      |
 
 ---
 
@@ -77,8 +79,6 @@ Declared in `platformio.ini`:
 | Library                      | Version   | Purpose                      |
 |-----------------------------|-----------|------------------------------|
 | Adafruit NeoPixel           | `1.12.5`  | WS2812B LED control          |
-| Adafruit SSD1306            | `2.5.7`   | OLED I²C display             |
-| Adafruit GFX                | `1.11.9`  | Core graphics (OLED backend) |
 
 ---
 
