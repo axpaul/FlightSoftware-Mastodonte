@@ -15,11 +15,38 @@
 #include "system.h"
 #include "drv8872.h"
 
+// Callback globale d'interruption GPIO (Aiguilleur central)
+void main_gpio_callback(uint gpio, uint32_t events) {
+  // Acknowledge l'interruption immédiatement pour libérer le matériel
+  gpio_acknowledge_irq(gpio, events);
+
+  // 1. Aiguillage vers les moteurs si c'est un défaut nFAULT
+  if (gpio == NFAUT_M1 || gpio == NFAUT_M2 || gpio == NFAUT_M3) {
+    drv8872_handle_fault(gpio);
+  }
+  // 2. Aiguillage vers le séquenceur de vol si c'est un événement physique de vol
+  else if (gpio == PIN_SMITCH_N1 || gpio == PIN_SMITCH_N2 || gpio == PIN_OCTO_N3 || gpio == PIN_OCTO_N4) {
+    seq_gpio_callback(gpio, events);
+  }
+}
+
 void setup(void) {
   // === Initialisation matérielle de base ===
   adc_init();            // Initialise le module ADC
   setup_pin();           // Configure les GPIOs physiques (platform.h)
   setup_rgb();           // Active et configure la LED RGB intégrée (WS2812B)
+  buzzer_init();         // Initialise le buzzer matériel (PWM)
+
+  // Enregistre l'aiguilleur GPIO global auprès du processeur
+  gpio_set_irq_callback(main_gpio_callback);
+
+  // === Initialisation des moteurs et de leurs interruptions de défaut ===
+  drv8872_init(&motor1);
+  drv8872_init(&motor2);
+  drv8872_init(&motor3);
+  drv8872_setup_fault_interrupt(&motor1);
+  drv8872_setup_fault_interrupt(&motor2);
+  drv8872_setup_fault_interrupt(&motor3);
 
   // === Lecture initiale de la batterie et de la température ===
   float voltage_batt = battery_read_voltage();

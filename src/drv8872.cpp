@@ -12,10 +12,24 @@
 #include "debug.h"
 #include <stdlib.h>
 
+// === Callbacks d'interruption en cas de défaut sur les moteurs ===
+static void motor1_fault_handler(void) {
+    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 1 !");
+    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 1 !");
+}
+static void motor2_fault_handler(void) {
+    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 2 !");
+    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 2 !");
+}
+static void motor3_fault_handler(void) {
+    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 3 !");
+    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 3 !");
+}
+
 // === Définition de 3 instances de moteurs globalement accessibles ===
-drv8872_t motor1 = { IN1_M1, IN2_M1, NFAUT_M1, NULL };
-drv8872_t motor2 = { IN1_M2, IN2_M2, NFAUT_M2, NULL };
-drv8872_t motor3 = { IN1_M3, IN2_M3, NFAUT_M3, NULL };
+drv8872_t motor1 = { IN1_M1, IN2_M1, NFAUT_M1, motor1_fault_handler };
+drv8872_t motor2 = { IN1_M2, IN2_M2, NFAUT_M2, motor2_fault_handler };
+drv8872_t motor3 = { IN1_M3, IN2_M3, NFAUT_M3, motor3_fault_handler };
 drv8872_t* motors[3] = { &motor1, &motor2, &motor3 };
 
 drv8872_group_t group_all_motors = {
@@ -24,25 +38,20 @@ drv8872_group_t group_all_motors = {
     .direction = true
 };
 
-// === Instance statique alternative (accès isolé par index) ===
-static drv8872_t drv_array[3] = {
-    { IN1_M1, IN2_M1, NFAUT_M1, NULL },
-    { IN1_M2, IN2_M2, NFAUT_M2, NULL },
-    { IN1_M3, IN2_M3, NFAUT_M3, NULL },
-};
-
 // === Structure pour alarmes temporisées de groupe ===
 typedef struct {
     drv8872_group_t group;
 } drv_group_timer_context_t;
 
-// === Pour gestion callback simple ===
-static drv8872_t* _drv_ref = NULL;
-
-// === Callback fault individuel par GPIO (fallback) ===
-static void gpio_fault_callback(uint gpio, uint32_t events) {
-    if (_drv_ref && _drv_ref->fault_callback) {
-        _drv_ref->fault_callback();
+// === Aiguillage du défaut moteur selon le GPIO qui a déclenché l'interruption ===
+void drv8872_handle_fault(uint gpio) {
+    for (int i = 0; i < 3; i++) {
+        if (motors[i] && motors[i]->fault_pin == gpio) {
+            if (motors[i]->fault_callback) {
+                motors[i]->fault_callback();
+            }
+            break;
+        }
     }
 }
 
@@ -50,13 +59,12 @@ static void gpio_fault_callback(uint gpio, uint32_t events) {
 void drv8872_init(drv8872_t* drv) {
     log_entryf("[DRV] Init DRV8872 on IN1=%d IN2=%d", drv->in1_pin, drv->in2_pin);
     drv8872_stop(drv);
-    _drv_ref = drv;
 }
 
 // === Accès via index ===
 drv8872_t* drv8872_get(uint8_t index) {
     if (index >= 3) return NULL;
-    return &drv_array[index];
+    return motors[index];
 }
 
 // === Contrôles basiques ===
@@ -109,7 +117,7 @@ bool drv8872_is_fault(drv8872_t* drv) {
 void drv8872_setup_fault_interrupt(drv8872_t* drv) {
     log_entryf("[DRV] Fault interrupt set up on pin %d", drv->fault_pin);
     if (!drv->fault_callback) return;
-    gpio_set_irq_enabled_with_callback(drv->fault_pin, GPIO_IRQ_EDGE_FALL, true, gpio_fault_callback);
+    gpio_set_irq_enabled(drv->fault_pin, GPIO_IRQ_EDGE_FALL, true);
 }
 
 // === Activation groupe avec timer ===

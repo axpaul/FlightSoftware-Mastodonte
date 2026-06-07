@@ -7,6 +7,7 @@
 // -------------------------------------------------------------
 
 #include "system.h"
+#include "log.h"
 
 Adafruit_NeoPixel rgb(1, PIN_LED_WS2812, NEO_GRB + NEO_KHZ800);
 
@@ -162,6 +163,12 @@ void system_battery_check_tick(void) {
       if (!battery_is_low) {
         rgb.setPixelColor(0, get_state_color(currentState));
         rgb.show();
+        log_entryf("[BATTERY] Tension retablie : %.2f V", voltage);
+        debug_printf("[BATTERY] Tension retablie : %.2f V\n", voltage);
+      } else {
+        // En cas de sous-tension détectée
+        log_entryf("[BATTERY] ALERTE : Sous-tension critique : %.2f V", voltage);
+        debug_printf("[BATTERY] ALERTE : Sous-tension critique : %.2f V !\n", voltage);
       }
     }
     

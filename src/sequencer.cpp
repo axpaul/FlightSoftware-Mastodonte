@@ -21,9 +21,6 @@ volatile uint8_t triggerTouch = 0;
 bool windowOpen = false;
 
 void seq_gpio_callback(uint gpio, uint32_t events) {
-    // Acknowledge the interrupt immediately to prevent the CPU from hanging
-    gpio_acknowledge_irq(gpio, events);
-
     switch (gpio) {
         case PIN_SMITCH_N2:
             if ((events & GPIO_IRQ_EDGE_FALL) &&
@@ -99,8 +96,6 @@ rocket_state_t seq_init(void){
     debug_printf("[CHECK] Pin 4 (OCTO 2)   = %d (%s)\n", octo4State,   (octo4State  == 0 ? "LOW"     : "HIGH"));
 
     log_entryf("[CHECK] Initial GPIO states: JACK=%d, RBF=%d, OCTO3=%d, OCTO4=%d", jackState, rbfState, octo3State, octo4State);
-
-    gpio_set_irq_callback(seq_gpio_callback);
 
     gpio_set_irq_enabled(PIN_SMITCH_N2, GPIO_IRQ_EDGE_RISE | GPIO_IRQ_EDGE_FALL, true);
     gpio_set_irq_enabled(PIN_SMITCH_N1, GPIO_IRQ_EDGE_FALL, true);

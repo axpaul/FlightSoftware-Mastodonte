@@ -9,7 +9,7 @@
 #ifndef BUZZER_HEADER
 #define BUZZER_HEADER
 
-#include <Arduino.h>
+#include <stdint.h>
 
 #include "platform.h"
 #include "debug.h"
@@ -27,6 +27,11 @@ struct BuzzerConfig {
     uint16_t freq;      // Fréquence du signal en Hz
     uint16_t duration;  // Durée d'activation du bip en millisecondes
 };
+
+/**
+ * @brief Initialise le buzzer matériel en configurant le PWM sur la broche dédiée.
+ */
+void buzzer_init();
 
 /**
  * @brief Configure et active/désactive le signal sonore émis par le buzzer.

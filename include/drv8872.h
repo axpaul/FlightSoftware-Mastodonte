@@ -100,6 +100,11 @@ bool drv8872_is_fault(drv8872_t* drv);
  */
 void drv8872_setup_fault_interrupt(drv8872_t* drv);
 
+/**
+ * @brief Gère l'aiguillage du défaut moteur selon le GPIO qui a déclenché l'interruption.
+ */
+void drv8872_handle_fault(uint gpio);
+
 // --- Gestion des groupes de moteurs temporisés ---
 
 /**
