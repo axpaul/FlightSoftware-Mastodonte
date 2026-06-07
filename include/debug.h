@@ -11,7 +11,7 @@
 
 #define DEBUG_ENABLED true
 
-#define DEBUG_TIMEOUT_MS 10000
+#define DEBUG_TIMEOUT_MS 500
 
 #include <Arduino.h>
 #include <stdarg.h>
