@@ -21,7 +21,6 @@ int debug_begin(unsigned long baud) {
     }
   
     if (Serial) {
-      Serial.println("[DEBUG] Serial initialized.");
       return 1;  // OK
     }
   

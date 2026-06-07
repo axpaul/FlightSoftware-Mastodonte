@@ -21,8 +21,6 @@ static volatile uint8_t log_buffer_tail = 0; // Où lire
 
 // === Initialisation du système de fichiers LittleFS ===
 bool log_init(void) {
-    debug_println("[LOG] Trying LittleFS.begin()...");
-
     LittleFSConfig cfg;
     cfg.setAutoFormat(false);
     LittleFS.setConfig(cfg);
@@ -36,7 +34,6 @@ bool log_init(void) {
         }
     }
 
-    debug_println("[LOG] LittleFS mounted.");
     return true;
 }
 
