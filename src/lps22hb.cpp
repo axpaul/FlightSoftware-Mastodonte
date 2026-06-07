@@ -11,6 +11,7 @@
 #include "log.h"
 #include "debug.h"
 #include <math.h>
+#include "sequencer.h"
 
 bool baro_present = false;
 
@@ -20,6 +21,7 @@ static float kalman_z = 0.0f;
 static float kalman_v = 0.0f;
 static float P_cov[2][2] = {{1.0f, 0.0f}, {0.0f, 1.0f}};
 static float max_altitude = 0.0f;
+static uint32_t apogee_counter = 0;
 
 static const float Q_alt = 0.1f;
 static const float Q_vel = 0.5f;
@@ -122,6 +124,7 @@ void lps22hb_reset_kalman(void) {
     P_cov[0][0] = 1.0f; P_cov[0][1] = 0.0f;
     P_cov[1][0] = 0.0f; P_cov[1][1] = 1.0f;
     max_altitude = 0.0f;
+    apogee_counter = 0;
 }
 
 void lps22hb_update_kalman(void) {
@@ -174,4 +177,44 @@ float lps22hb_get_max_altitude(void) {
 
 float lps22hb_get_ground_pressure(void) {
     return ground_pressure;
+}
+
+void lps22hb_drdy_callback(void) {
+    if (!baro_present) {
+        return; // Bypass de sécurité si le baromètre est physiquement absent
+    }
+
+    // Fait clignoter la LED verte GP25 pour confirmer l'acquisition active
+    gpio_put(PIN_LED_STATUS, !gpio_get(PIN_LED_STATUS));
+
+    // 1. Si on est au sol, on calibre la pression de référence
+    if (currentState == PRE_FLIGHT) {
+        lps22hb_calibrate_ground();
+        return;
+    }
+
+    // 2. Si on est en vol, on met à jour l'estimateur de Kalman
+    if (currentState == ASCEND || currentState == WINDOW || currentState == DESCEND) {
+        lps22hb_update_kalman();
+    }
+
+    // 3. Algorithme de détection d'apogée (uniquement en montée ou dans la fenêtre)
+    if (currentState == ASCEND || currentState == WINDOW) {
+        float z = lps22hb_get_kalman_altitude();
+        float v = lps22hb_get_kalman_velocity();
+
+        // Condition : altitude > 15m (marge de sécurité) et vitesse estimée négative (redescente)
+        if (z > 15.0f && v < -1.0f) {
+            apogee_counter++;
+            if (apogee_counter >= 5) { // 5 mesures consécutives (~200 ms) pour confirmer
+                if (triggerBaroApogee == 0) {
+                    triggerBaroApogee = 1;
+                    log_entryf("[KALMAN] Apogee detectee ! Alt = %.2fm, Vel = %.2fm/s", z, v);
+                    debug_printf("[KALMAN] Apogee detectee ! Alt = %.2f m, Vel = %.2f m/s\n", z, v);
+                }
+            }
+        } else {
+            apogee_counter = 0; // Réinitialise en cas de remontée ou d'altitude insuffisante
+        }
+    }
 }

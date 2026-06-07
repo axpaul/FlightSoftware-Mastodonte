@@ -85,4 +85,9 @@ float lps22hb_get_max_altitude(void);
  */
 float lps22hb_get_ground_pressure(void);
 
+/**
+ * @brief Callback d'interruption déclenchée à chaque nouvelle donnée barométrique prête (25 Hz).
+ */
+void lps22hb_drdy_callback(void);
+
 #endif // LPS22HB_HEADER_FILE

@@ -358,43 +358,5 @@ rocket_state_t seq_touchdown(void){
     return TOUCHDOWN;
 }
 
-void seq_baro_drdy_callback(void) {
-    if (!baro_present) {
-        return; // Bypass de sécurité si le baromètre est physiquement absent
-    }
 
-    // Fait clignoter la LED verte GP25 pour confirmer l'acquisition active
-    gpio_put(PIN_LED_STATUS, !gpio_get(PIN_LED_STATUS));
-
-    // 1. Si on est au sol, on calibre la pression de référence
-    if (currentState == PRE_FLIGHT) {
-        lps22hb_calibrate_ground();
-        return;
-    }
-
-    // 2. Si on est en vol, on met à jour l'estimateur de Kalman
-    if (currentState == ASCEND || currentState == WINDOW || currentState == DESCEND) {
-        lps22hb_update_kalman();
-    }
-
-    // 3. Algorithme de détection d'apogée (uniquement en montée ou dans la fenêtre)
-    if (currentState == ASCEND || currentState == WINDOW) {
-        float kalman_z = lps22hb_get_kalman_altitude();
-        float kalman_v = lps22hb_get_kalman_velocity();
-
-        // Condition : altitude > 15m (marge de sécurité) et vitesse estimée négative (redescente)
-        if (kalman_z > 15.0f && kalman_v < -1.0f) {
-            apogee_counter++;
-            if (apogee_counter >= 5) { // 5 mesures consécutives (~200 ms) pour confirmer
-                if (triggerBaroApogee == 0) {
-                    triggerBaroApogee = 1;
-                    log_entryf("[KALMAN] Apogee detectee ! Alt = %.2fm, Vel = %.2fm/s", kalman_z, kalman_v);
-                    debug_printf("[KALMAN] Apogee detectee ! Alt = %.2f m, Vel = %.2f m/s\n", kalman_z, kalman_v);
-                }
-            }
-        } else {
-            apogee_counter = 0; // Réinitialise en cas de remontée ou d'altitude insuffisante
-        }
-    }
-}
 

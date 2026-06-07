@@ -32,7 +32,7 @@ void main_gpio_callback(uint gpio, uint32_t events) {
   }
   // 3. Aiguillage vers la routine de filtrage du baromètre (Data Ready)
   else if (gpio == PIN_BARO_INT) {
-    seq_baro_drdy_callback();
+    lps22hb_drdy_callback();
   }
 }
 

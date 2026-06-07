@@ -25,7 +25,10 @@
 
 // Drapeau pour le retrait/insertion du commutateur RBF (Remove Before Flight)
 extern volatile uint8_t triggerRBF;
-extern volatile float max_altitude;
+
+// État actuel du séquenceur de vol et drapeaux de déclenchement
+extern rocket_state_t currentState;
+extern volatile uint8_t triggerBaroApogee;
 
 /**
  * @brief Initialise le séquenceur de vol, configure les interruptions de sécurité et lit l'état initial des GPIOs.
@@ -61,10 +64,7 @@ rocket_state_t seq_touchdown(void);
  */
 void seq_gpio_callback(uint gpio, uint32_t events);
 
-/**
- * @brief Callback d'interruption déclenchée à chaque nouvelle donnée barométrique prête (25 Hz).
- */
-void seq_baro_drdy_callback(void);
+
 
 /**
  * @brief Callback d'alarme déclenchée pour ouvrir la fenêtre d'ouverture du parachute.
