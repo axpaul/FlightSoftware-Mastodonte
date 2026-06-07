@@ -160,11 +160,11 @@ void display_update(void) {
         return; // Ne fait aucune écriture I2C pendant le vol
     }
 
-    // Rallume l'écran si on vient de finir le vol
-    if (screen_turned_off && currentState == TOUCHDOWN) {
+    // Rallume l'écran si on repasse dans un état hors vol (ex: au sol, touchdown ou erreur)
+    if (screen_turned_off) {
         display.ssd1306_command(SSD1306_DISPLAYON);
         screen_turned_off = false;
-        log_entry("[OLED] Display turned on post-landing.");
+        log_entry("[OLED] Display turned back on (out of flight phase).");
     }
 
     // 2. Limitation du taux de rafraîchissement au sol (5 Hz pour ne pas surcharger la boucle principale)
