@@ -29,7 +29,6 @@
 
 static Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 static bool display_present = false;
-static bool screen_turned_off = false;
 
 // Conversion des états FSM en chaînes anglaises
 static const char* state_to_string(rocket_state_t state) {
@@ -66,7 +65,6 @@ bool display_init(void) {
     }
 
     display_present = true;
-    screen_turned_off = false;
 
     // Configuration par défaut de l'écran
     display.clearDisplay();
@@ -148,24 +146,7 @@ void display_update(void) {
         return; // Évite les appels I2C si l'écran n'est pas branché physiquement
     }
 
-    // 1. Gestion des états de vol critiques (Coupure de l'écran pour économie & sécurité)
-    if (currentState == ASCEND || currentState == WINDOW || currentState == DESCEND) {
-        if (!screen_turned_off) {
-            display.clearDisplay();
-            display.display();
-            display.ssd1306_command(SSD1306_DISPLAYOFF); // Éteint physiquement l'écran
-            screen_turned_off = true;
-            log_entry("[OLED] Display turned off for active flight phase.");
-        }
-        return; // Ne fait aucune écriture I2C pendant le vol
-    }
 
-    // Rallume l'écran si on repasse dans un état hors vol (ex: au sol, touchdown ou erreur)
-    if (screen_turned_off) {
-        display.ssd1306_command(SSD1306_DISPLAYON);
-        screen_turned_off = false;
-        log_entry("[OLED] Display turned back on (out of flight phase).");
-    }
 
     // 2. Limitation du taux de rafraîchissement au sol (5 Hz pour ne pas surcharger la boucle principale)
     static uint32_t last_refresh = 0;

@@ -59,7 +59,7 @@
 
 // === Board and firmware information ===
 #define BOARD_NAME_SYS "YD-RP2040 Mastodonte"
-#define FW_VERSION "v2.0.4"
+#define FW_VERSION "v2.0.5"
 
 /**
  * @brief États de la machine d'état (FSM) du séquenceur de vol.
