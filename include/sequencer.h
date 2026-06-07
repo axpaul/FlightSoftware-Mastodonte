@@ -11,7 +11,7 @@
 
 // Constantes temporelles et marges de vol (en microsecondes)
 #define THEORETICAL_APOGEE_US 17000000
-#define THEORETICAL_DESCENT_US 60000000
+#define THEORETICAL_DESCENT_US 600000000ULL
 #define WINDOW_MARGIN_PCT     15
 #define WINDOW_OPEN_OFFSET_US (THEORETICAL_APOGEE_US * (100 - WINDOW_MARGIN_PCT) / 100)
 #define WINDOW_DURATION_US    (2 * THEORETICAL_APOGEE_US * WINDOW_MARGIN_PCT / 100)
@@ -29,6 +29,7 @@ extern volatile uint8_t triggerRBF;
 // État actuel du séquenceur de vol et drapeaux de déclenchement
 extern rocket_state_t currentState;
 extern volatile uint8_t triggerBaroApogee;
+extern volatile uint8_t triggerTouch;
 
 /**
  * @brief Initialise le séquenceur de vol, configure les interruptions de sécurité et lit l'état initial des GPIOs.

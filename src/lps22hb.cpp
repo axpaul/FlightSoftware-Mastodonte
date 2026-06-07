@@ -12,6 +12,7 @@
 #include "debug.h"
 #include <math.h>
 #include "sequencer.h"
+#include "telemetry.h"
 
 bool baro_present = false;
 
@@ -22,6 +23,7 @@ static float kalman_v = 0.0f;
 static float P_cov[2][2] = {{1.0f, 0.0f}, {0.0f, 1.0f}};
 static float max_altitude = 0.0f;
 static uint32_t apogee_counter = 0;
+static uint32_t touchdown_confirm_counter = 0;
 
 static const float Q_alt = 0.1f;
 static const float Q_vel = 0.5f;
@@ -197,6 +199,13 @@ void lps22hb_drdy_callback(void) {
         return; // Bypass de sécurité si le baromètre est physiquement absent
     }
 
+    static bool first_interrupt = false;
+    if (!first_interrupt) {
+        first_interrupt = true;
+        debug_println("[BARO] First DRDY interrupt received on GP5!");
+        log_entry("[BARO] First DRDY interrupt received");
+    }
+
     // Fait clignoter la LED verte GP25 pour confirmer l'acquisition active
     gpio_put(PIN_LED_STATUS, !gpio_get(PIN_LED_STATUS));
 
@@ -206,9 +215,15 @@ void lps22hb_drdy_callback(void) {
         return;
     }
 
-    // 2. Si on est en vol, on met à jour l'estimateur de Kalman
+    // 2. Si on est en vol, on met à jour l'estimateur de Kalman et la télémétrie
     if (currentState == ASCEND || currentState == WINDOW || currentState == DESCEND) {
         lps22hb_update_kalman();
+        telemetry_update();
+    }
+    // 3. Dans les autres états (ex: PYRO_RDY), on doit quand même lire la pression
+    // pour acquitter l'interruption matérielle du capteur, sinon son pin INT reste bloqué.
+    else {
+        (void)lps22hb_read_pressure();
     }
 
     // 3. Algorithme de détection d'apogée (uniquement en montée ou dans la fenêtre)
@@ -228,6 +243,23 @@ void lps22hb_drdy_callback(void) {
             }
         } else {
             apogee_counter = 0; // Réinitialise en cas de remontée ou d'altitude insuffisante
+        }
+    }
+
+    // 4. Détection dynamique de l'atterrissage (Touchdown) par vitesse de Kalman nulle
+    if (currentState == DESCEND) {
+        float v = lps22hb_get_kalman_velocity();
+        if (fabsf(v) < 0.5f) {
+            touchdown_confirm_counter++;
+            if (touchdown_confirm_counter >= 50) { // 50 ticks * 40ms = 2 secondes à 25Hz
+                if (triggerTouch == 0) {
+                    triggerTouch = 1;
+                    log_entryf("[KALMAN] Touchdown detecte par capteur (vitesse stabilisee a %.2f m/s)", v);
+                    debug_printf("[KALMAN] Touchdown detecte par capteur (vitesse stabilisee a %.2f m/s)\n", v);
+                }
+            }
+        } else {
+            touchdown_confirm_counter = 0; // Réinitialise si la vitesse varie
         }
     }
 }

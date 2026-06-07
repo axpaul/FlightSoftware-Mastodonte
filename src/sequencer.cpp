@@ -8,6 +8,7 @@
 
 #include "sequencer.h"
 #include "lps22hb.h"
+#include "telemetry.h"
 
 rocket_state_t currentState = PRE_FLIGHT;
 alarm_id_t windowAlarmId = -1;
@@ -223,6 +224,7 @@ rocket_state_t seq_pyroRdy(void){
 
         debug_println("[PYRO_RDY] Jack removed → LIFTOFF detected");
         log_entry("[PYRO_RDY] Jack removed");
+        telemetry_init();
 
         debug_printf("[PYRO_RDY] Alarm start timer @ %02lu:%02lu.%03lu.%03lu\n", ts.minutes, ts.seconds, ts.milliseconds, ts.microseconds);
         debug_printf("[PYRO_RDY] Window scheduled to open at T+%.2f s, duration %.2f s\n", WINDOW_OPEN_OFFSET_US / 1e6, WINDOW_DURATION_US / 1e6);
@@ -339,14 +341,7 @@ rocket_state_t seq_descend(void){
         gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
     
         log_entry("[SEQ] Touchdown detected");
-        float max_alt = lps22hb_get_max_altitude();
-        if (max_alt > 0.0f) {
-            log_entryf("[REPORT] Vol termine. Altitude maximale : %.2f m", max_alt);
-            debug_printf("[REPORT] Vol termine. Altitude maximale : %.2f m\n", max_alt);
-        } else {
-            log_entry("[REPORT] Vol termine. Altitude maximale non disponible (pas de baro).");
-            debug_println("[REPORT] Vol termine. Altitude maximale non disponible (pas de baro).");
-        }
+        telemetry_save_report();
         apply_state_config(TOUCHDOWN);
         return TOUCHDOWN;
     }

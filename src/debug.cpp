@@ -28,20 +28,26 @@ int debug_begin(unsigned long baud) {
   }
   
 void debug_print(const String& msg) {
-  Serial.print(msg);
+  if (Serial) {
+    Serial.print(msg);
+  }
 }
 
 void debug_println(const String& msg) {
-  Serial.println(msg);
+  if (Serial) {
+    Serial.println(msg);
+  }
 }
 
 void debug_printf(const char* fmt, ...) {
-  char buffer[128];
-  va_list args;
-  va_start(args, fmt);
-  vsnprintf(buffer, sizeof(buffer), fmt, args);
-  va_end(args);
-  Serial.print(buffer);
+  if (Serial) {
+    char buffer[128];
+    va_list args;
+    va_start(args, fmt);
+    vsnprintf(buffer, sizeof(buffer), fmt, args);
+    va_end(args);
+    Serial.print(buffer);
+  }
 }
 
 #else
