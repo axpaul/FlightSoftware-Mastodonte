@@ -87,3 +87,23 @@ void telemetry_save_report(void) {
     }
     debug_println("==================================\n");
 }
+
+float telemetry_get_max_velocity(void) {
+    return max_vel;
+}
+
+float telemetry_get_max_acceleration(void) {
+    return max_accel;
+}
+
+float telemetry_get_apogee_altitude(void) {
+    return apogee_alt;
+}
+
+uint32_t telemetry_get_apogee_time_ms(void) {
+    return apogee_time_ms;
+}
+
+bool telemetry_is_apogee_recorded(void) {
+    return apogee_recorded;
+}

@@ -26,4 +26,10 @@ void telemetry_update(void);
  */
 void telemetry_save_report(void);
 
+float telemetry_get_max_velocity(void);
+float telemetry_get_max_acceleration(void);
+float telemetry_get_apogee_altitude(void);
+uint32_t telemetry_get_apogee_time_ms(void);
+bool telemetry_is_apogee_recorded(void);
+
 #endif // TELEMETRY_HEADER_FILE

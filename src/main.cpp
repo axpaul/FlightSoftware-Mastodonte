@@ -16,6 +16,7 @@
 #include "drv8872.h"
 #include "lps22hb.h"
 #include "lsm6dsl.h"
+#include "display.h"
 
 // Callback globale d'interruption GPIO (Aiguilleur central)
 void main_gpio_callback(uint gpio, uint32_t events) {
@@ -43,6 +44,7 @@ void setup(void) {
   system_i2c_init();     // Configure et démarre le bus I2C1 (Berry MiniSensor)
   setup_rgb();           // Active et configure la LED RGB intégrée (WS2812B)
   buzzer_init();         // Initialise le buzzer matériel (PWM)
+  display_init();        // Initialise l'écran OLED (I2C0 sur GP8/GP9)
 
   // Enregistre l'aiguilleur GPIO global auprès du processeur
   gpio_set_irq_callback(main_gpio_callback);
@@ -216,6 +218,7 @@ void setup(void) {
 }
 
 void loop() {
+  display_update();            // Met à jour l'écran OLED (I2C0 sur GP8/GP9)
   seq_handle();                // Exécute la logique de la machine d'état de vol
   system_battery_check_tick(); // Vérifie périodiquement la tension de la batterie
   log_flush();                 // Écrit les logs du buffer en flash de manière non bloquante
