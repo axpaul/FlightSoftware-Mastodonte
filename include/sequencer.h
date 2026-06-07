@@ -25,6 +25,7 @@
 
 // Drapeau pour le retrait/insertion du commutateur RBF (Remove Before Flight)
 extern volatile uint8_t triggerRBF;
+extern volatile float max_altitude;
 
 /**
  * @brief Initialise le séquenceur de vol, configure les interruptions de sécurité et lit l'état initial des GPIOs.

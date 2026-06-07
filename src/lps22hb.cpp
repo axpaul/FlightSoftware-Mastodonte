@@ -14,6 +14,17 @@
 
 bool baro_present = false;
 
+// Variables d'estimation et de filtrage (Kalman 1D)
+static float ground_pressure = -1.0f;
+static float kalman_z = 0.0f;
+static float kalman_v = 0.0f;
+static float P_cov[2][2] = {{1.0f, 0.0f}, {0.0f, 1.0f}};
+static float max_altitude = 0.0f;
+
+static const float Q_alt = 0.1f;
+static const float Q_vel = 0.5f;
+static const float R_alt = 1.0f;
+
 // --- Fonctions d'écriture/lecture de bas niveau I2C ---
 
 static void lps_write_reg(uint8_t reg, uint8_t val) {
@@ -45,6 +56,8 @@ bool lps22hb_init(void) {
     }
 
     baro_present = true;
+    ground_pressure = -1.0f;
+    lps22hb_reset_kalman();
     log_entry("[LPS22HB] Capteur detecte avec succes.");
 
     // 2. Configuration : CTRL_REG1 (0x10)
@@ -91,4 +104,74 @@ float lps22hb_hpa_to_altitude(float pressure_hpa, float ground_pressure_hpa) {
     if (ground_pressure_hpa <= 0.0f) return 0.0f;
     // Formule barométrique internationale
     return 44330.0f * (1.0f - powf(pressure_hpa / ground_pressure_hpa, 0.1902949f));
+}
+
+void lps22hb_calibrate_ground(void) {
+    if (!baro_present) return;
+    float press = lps22hb_read_pressure();
+    if (ground_pressure < 0.0f) {
+        ground_pressure = press;
+    } else {
+        ground_pressure = (ground_pressure * 0.98f) + (press * 0.02f);
+    }
+}
+
+void lps22hb_reset_kalman(void) {
+    kalman_z = 0.0f;
+    kalman_v = 0.0f;
+    P_cov[0][0] = 1.0f; P_cov[0][1] = 0.0f;
+    P_cov[1][0] = 0.0f; P_cov[1][1] = 1.0f;
+    max_altitude = 0.0f;
+}
+
+void lps22hb_update_kalman(void) {
+    if (!baro_present || ground_pressure < 0.0f) return;
+
+    float press = lps22hb_read_pressure();
+    float z_meas = lps22hb_hpa_to_altitude(press, ground_pressure);
+
+    // Étape de prédiction (dt = 40 ms)
+    float dt = 0.040f;
+    float z_pred = kalman_z + (kalman_v * dt);
+    float v_pred = kalman_v;
+
+    P_cov[0][0] = P_cov[0][0] + dt * (P_cov[1][0] + P_cov[0][1]) + dt * dt * P_cov[1][1] + Q_alt;
+    P_cov[0][1] = P_cov[0][1] + dt * P_cov[1][1];
+    P_cov[1][0] = P_cov[0][1];
+    P_cov[1][1] = P_cov[1][1] + Q_vel;
+
+    // Étape de correction/mise à jour
+    float S = P_cov[0][0] + R_alt;
+    float K0 = P_cov[0][0] / S;
+    float K1 = P_cov[1][0] / S;
+
+    float y = z_meas - z_pred; // Résidu d'innovation
+
+    kalman_z = z_pred + (K0 * y);
+    kalman_v = v_pred + (K1 * y);
+
+    if (kalman_z > max_altitude) {
+        max_altitude = kalman_z;
+    }
+
+    P_cov[0][0] = (1.0f - K0) * P_cov[0][0];
+    P_cov[0][1] = (1.0f - K0) * P_cov[0][1];
+    P_cov[1][0] = P_cov[0][1];
+    P_cov[1][1] = P_cov[1][1] - K1 * P_cov[0][1];
+}
+
+float lps22hb_get_kalman_altitude(void) {
+    return kalman_z;
+}
+
+float lps22hb_get_kalman_velocity(void) {
+    return kalman_v;
+}
+
+float lps22hb_get_max_altitude(void) {
+    return max_altitude;
+}
+
+float lps22hb_get_ground_pressure(void) {
+    return ground_pressure;
 }

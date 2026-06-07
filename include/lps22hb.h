@@ -50,4 +50,39 @@ float lps22hb_read_temperature(void);
  */
 float lps22hb_hpa_to_altitude(float pressure_hpa, float ground_pressure_hpa);
 
+/**
+ * @brief Exécute la calibration de la pression de référence au sol (PRE_FLIGHT).
+ */
+void lps22hb_calibrate_ground(void);
+
+/**
+ * @brief Réinitialise les variables du filtre de Kalman 1D.
+ */
+void lps22hb_reset_kalman(void);
+
+/**
+ * @brief Met à jour le filtre de Kalman 1D avec la nouvelle mesure du capteur.
+ */
+void lps22hb_update_kalman(void);
+
+/**
+ * @brief Obtient l'altitude estimée par le filtre de Kalman (m).
+ */
+float lps22hb_get_kalman_altitude(void);
+
+/**
+ * @brief Obtient la vitesse verticale estimée par le filtre de Kalman (m/s).
+ */
+float lps22hb_get_kalman_velocity(void);
+
+/**
+ * @brief Obtient l'altitude maximale estimée atteinte (m).
+ */
+float lps22hb_get_max_altitude(void);
+
+/**
+ * @brief Obtient la pression moyenne au sol calibrée (hPa).
+ */
+float lps22hb_get_ground_pressure(void);
+
 #endif // LPS22HB_HEADER_FILE

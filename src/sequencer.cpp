@@ -19,18 +19,8 @@ volatile uint8_t triggerOcto4 = 0;
 volatile uint8_t triggerTouch = 0;
 volatile uint8_t triggerBaroApogee = 0;
 volatile bool windowHasOpened = false;
-
-float ground_pressure = -1.0f;
-
-// Variables d'état du Filtre de Kalman 1D
-static float kalman_z = 0.0f;  // Altitude estimée (m)
-static float kalman_v = 0.0f;  // Vitesse verticale estimée (m/s)
-static float P_cov[2][2] = {{1.0f, 0.0f}, {0.0f, 1.0f}}; // Covariance d'erreur
-
-// Paramètres de bruit du filtre
-static const float Q_alt = 0.1f;   // Incertitude sur l'altitude
-static const float Q_vel = 0.5f;   // Incertitude sur la vitesse
-static const float R_alt = 1.0f;   // Variance du bruit de mesure du baromètre
+// Le filtre de Kalman 1D, le calcul de l'altitude maximale et la pression de référence au sol
+// sont désormais gérés de manière modulaire directement à l'intérieur du pilote du baromètre (lps22hb.cpp).
 static uint32_t apogee_counter = 0;
 
 bool windowOpen = false;
@@ -97,6 +87,7 @@ void seq_reset_triggers() {
     triggerTouch = 0;
     triggerBaroApogee = 0;
     windowHasOpened = false;
+    lps22hb_reset_kalman();
 }
   
 rocket_state_t seq_init(void){
@@ -108,11 +99,8 @@ rocket_state_t seq_init(void){
 
     log_entryf("[CHECK] Initial GPIO states: JACK=%d, RBF=%d, OCTO3=%d, OCTO4=%d", jackState, rbfState, octo3State, octo4State);
 
-    // Initialisation des variables Kalman
-    kalman_z = 0.0f;
-    kalman_v = 0.0f;
-    P_cov[0][0] = 1.0f; P_cov[0][1] = 0.0f;
-    P_cov[1][0] = 0.0f; P_cov[1][1] = 1.0f;
+    // Initialisation des variables Kalman (gérées par le pilote lps22hb)
+    lps22hb_reset_kalman();
     apogee_counter = 0;
     triggerBaroApogee = 0;
 
@@ -351,6 +339,14 @@ rocket_state_t seq_descend(void){
         gpio_set_irq_enabled(PIN_OCTO_N4, GPIO_IRQ_EDGE_RISE, false);
     
         log_entry("[SEQ] Touchdown detected");
+        float max_alt = lps22hb_get_max_altitude();
+        if (max_alt > 0.0f) {
+            log_entryf("[REPORT] Vol termine. Altitude maximale : %.2f m", max_alt);
+            debug_printf("[REPORT] Vol termine. Altitude maximale : %.2f m\n", max_alt);
+        } else {
+            log_entry("[REPORT] Vol termine. Altitude maximale non disponible (pas de baro).");
+            debug_println("[REPORT] Vol termine. Altitude maximale non disponible (pas de baro).");
+        }
         apply_state_config(TOUCHDOWN);
         return TOUCHDOWN;
     }
@@ -370,55 +366,22 @@ void seq_baro_drdy_callback(void) {
     // Fait clignoter la LED verte GP25 pour confirmer l'acquisition active
     gpio_put(PIN_LED_STATUS, !gpio_get(PIN_LED_STATUS));
 
-    // 1. Lecture de la pression actuelle
-    float press = lps22hb_read_pressure();
-
-    // 2. Calibration de la pression de référence au sol (PRE_FLIGHT)
+    // 1. Si on est au sol, on calibre la pression de référence
     if (currentState == PRE_FLIGHT) {
-        if (ground_pressure < 0.0f) {
-            ground_pressure = press; // Initialisation de départ
-        } else {
-            // Lissage lent par filtre passe-bas exponentiel
-            ground_pressure = (ground_pressure * 0.98f) + (press * 0.02f);
-        }
-        return; // On ne fait pas tourner le filtre de Kalman au sol
-    }
-
-    // Si la pression de sol est invalide, impossible de continuer
-    if (ground_pressure < 0.0f) {
+        lps22hb_calibrate_ground();
         return;
     }
 
-    // 3. Calcul de l'altitude mesurée
-    float z_meas = lps22hb_hpa_to_altitude(press, ground_pressure);
+    // 2. Si on est en vol, on met à jour l'estimateur de Kalman
+    if (currentState == ASCEND || currentState == WINDOW || currentState == DESCEND) {
+        lps22hb_update_kalman();
+    }
 
-    // 4. Étape de prédiction du filtre de Kalman 1D (dt = 40 ms)
-    float dt = 0.040f;
-    float z_pred = kalman_z + (kalman_v * dt);
-    float v_pred = kalman_v;
-
-    P_cov[0][0] = P_cov[0][0] + dt * (P_cov[1][0] + P_cov[0][1]) + dt * dt * P_cov[1][1] + Q_alt;
-    P_cov[0][1] = P_cov[0][1] + dt * P_cov[1][1];
-    P_cov[1][0] = P_cov[0][1];
-    P_cov[1][1] = P_cov[1][1] + Q_vel;
-
-    // 5. Étape de correction/mise à jour du filtre de Kalman 1D
-    float S = P_cov[0][0] + R_alt;
-    float K0 = P_cov[0][0] / S;
-    float K1 = P_cov[1][0] / S;
-
-    float y = z_meas - z_pred; // Résidu d'innovation
-
-    kalman_z = z_pred + (K0 * y);
-    kalman_v = v_pred + (K1 * y);
-
-    P_cov[0][0] = (1.0f - K0) * P_cov[0][0];
-    P_cov[0][1] = (1.0f - K0) * P_cov[0][1];
-    P_cov[1][0] = P_cov[0][1];
-    P_cov[1][1] = P_cov[1][1] - K1 * P_cov[0][1];
-
-    // 6. Algorithme de détection d'apogée (en vol uniquement)
+    // 3. Algorithme de détection d'apogée (uniquement en montée ou dans la fenêtre)
     if (currentState == ASCEND || currentState == WINDOW) {
+        float kalman_z = lps22hb_get_kalman_altitude();
+        float kalman_v = lps22hb_get_kalman_velocity();
+
         // Condition : altitude > 15m (marge de sécurité) et vitesse estimée négative (redescente)
         if (kalman_z > 15.0f && kalman_v < -1.0f) {
             apogee_counter++;
