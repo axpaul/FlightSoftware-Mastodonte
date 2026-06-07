@@ -128,35 +128,48 @@ void lps22hb_reset_kalman(void) {
 }
 
 void lps22hb_update_kalman(void) {
+    // Évite de faire tourner le filtre si le baromètre est absent ou non calibré au sol
     if (!baro_present || ground_pressure < 0.0f) return;
 
+    // 1. Lecture de la pression brute et conversion en altitude brute relative (mètres)
     float press = lps22hb_read_pressure();
     float z_meas = lps22hb_hpa_to_altitude(press, ground_pressure);
 
-    // Étape de prédiction (dt = 40 ms)
+    // 2. Étape de PREDICTION de l'état (physique de Newton : z = z + v*dt, v = v)
+    // dt = 40 ms (fréquence d'échantillonnage de 25 Hz)
     float dt = 0.040f;
     float z_pred = kalman_z + (kalman_v * dt);
     float v_pred = kalman_v;
 
+    // 3. Étape de PREDICTION de la covariance de l'erreur (P = A*P*A^T + Q)
+    // On propage l'incertitude sur l'altitude et la vitesse, augmentée des bruits de process Q
     P_cov[0][0] = P_cov[0][0] + dt * (P_cov[1][0] + P_cov[0][1]) + dt * dt * P_cov[1][1] + Q_alt;
     P_cov[0][1] = P_cov[0][1] + dt * P_cov[1][1];
     P_cov[1][0] = P_cov[0][1];
     P_cov[1][1] = P_cov[1][1] + Q_vel;
 
-    // Étape de correction/mise à jour
+    // 4. Étape de CORRECTION : Calcul du Gain de Kalman (K)
+    // S représente la variance de l'innovation (variance de l'erreur + bruit de mesure R)
     float S = P_cov[0][0] + R_alt;
+    // K0 (gain d'altitude) et K1 (gain de vitesse) dosent la confiance accordée entre
+    // notre modèle physique de prédiction théorique et la mesure brute bruitée du capteur
     float K0 = P_cov[0][0] / S;
     float K1 = P_cov[1][0] / S;
 
-    float y = z_meas - z_pred; // Résidu d'innovation
+    // 5. Calcul de l'innovation (résidu : y = mesure - prédiction)
+    float y = z_meas - z_pred;
 
+    // 6. Mise à jour de l'état estimé avec la mesure pondérée par le gain de Kalman
     kalman_z = z_pred + (K0 * y);
     kalman_v = v_pred + (K1 * y);
 
+    // Enregistrement de l'altitude maximale filtrée atteinte
     if (kalman_z > max_altitude) {
         max_altitude = kalman_z;
     }
 
+    // 7. Mise à jour de la covariance de l'erreur pour le prochain cycle (P = (I - K*H)*P)
+    // Réduit l'incertitude de l'estimation après avoir pris en compte la nouvelle mesure
     P_cov[0][0] = (1.0f - K0) * P_cov[0][0];
     P_cov[0][1] = (1.0f - K0) * P_cov[0][1];
     P_cov[1][0] = P_cov[0][1];
