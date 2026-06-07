@@ -172,8 +172,8 @@ rocket_state_t seq_handle(void) {
 }
 
 rocket_state_t seq_preLaunch(void) {
-    // Passage à PYRO_RDY après retrait du RBF (détection sur front ou niveau logique bas)
-    if (triggerRBF == 1 || gpio_get(PIN_SMITCH_N2) == 0) {  
+    // Passage à PYRO_RDY après retrait du RBF (détection sur front uniquement)
+    if (triggerRBF == 1) {  
         triggerRBF = 0;       
         debug_println("[SEQ] RBF disarmed (removed) → transition to PYRO_RDY");
         log_entry("[SEQ] RBF removed");
@@ -186,8 +186,8 @@ rocket_state_t seq_preLaunch(void) {
 }
 
 rocket_state_t seq_pyroRdy(void){
-    // Passage à PRE_FLIGHT après insertion du RBF (détection sur front ou niveau logique haut)
-    if (triggerRBF == 2 || gpio_get(PIN_SMITCH_N2) == 1) {
+    // Passage à PRE_FLIGHT après insertion du RBF (détection sur front uniquement)
+    if (triggerRBF == 2) {
         triggerRBF = 0;
         debug_println("[SEQ] RBF inserted → return to PRE_FLIGHT");
         log_entry("[SEQ] RBF inserted");
@@ -195,8 +195,8 @@ rocket_state_t seq_pyroRdy(void){
         apply_state_config(PRE_FLIGHT);
         return PRE_FLIGHT;
     }
-    // Passage à ASCEND après retrait du Jack (détection sur front ou niveau logique bas)
-    if (triggerJack == 1 || gpio_get(PIN_SMITCH_N1) == 0) {
+    // Passage à ASCEND après retrait du Jack (détection sur front uniquement)
+    if (triggerJack == 1) {
         triggerJack = 0;
         timestamp_t ts = compute_timestamp(get_absolute_time());
 

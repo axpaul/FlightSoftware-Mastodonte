@@ -79,18 +79,18 @@ bool display_init(void) {
     pico_get_unique_board_id_string(id_string, sizeof(id_string));
 
     // --- Animation du Démarrage (Boot Animation) ---
-    // Affiche le nom "MASTODONTE", la version et l'ID unique avec une fusée réaliste horizontale
+    // Affiche le nom "MASTODONTE", la version et l'ID unique avec une fusée réaliste horizontale traversant le titre
     for (int16_t frame = 0; frame <= 60; frame++) {
         display.clearDisplay();
 
-        // Titre principal "MASTODONTE" en haut
+        // Titre principal "MASTODONTE"
         display.setTextSize(2);
-        display.setCursor(4, 2);
+        display.setCursor(4, 12);
         display.print("MASTODONTE");
 
         // Version en bas (centrée)
         display.setTextSize(1);
-        display.setCursor(34, 42);
+        display.setCursor(34, 38);
         display.print("FW: ");
         display.print(FW_VERSION);
 
@@ -99,9 +99,9 @@ bool display_init(void) {
         display.print("ID: ");
         display.print(id_string);
 
-        // Coordonnées de la fusée (vol horizontal au milieu exact de l'écran, y = 29)
+        // Coordonnées de la fusée (vol horizontal traversant le texte à ry = 20)
         int16_t rx = -30 + (180 * frame / 60);
-        int16_t ry = 29;
+        int16_t ry = 20;
 
         // --- Dessin d'une fusée réaliste (horizontale, pointée vers la droite) ---
         // Corps de la fusée (cylindre épais tracé par lignes parallèles et remplissage)
