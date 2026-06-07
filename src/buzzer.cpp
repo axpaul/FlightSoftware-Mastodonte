@@ -23,6 +23,11 @@ static void buzzer_stop() {
   uint channel = pwm_gpio_to_channel(PIN_BUZZER);
   pwm_set_chan_level(slice_num, channel, 0);
   pwm_set_enabled(slice_num, false);
+
+  // Force la broche au niveau bas en la repassant en GPIO standard (SIO)
+  gpio_init(PIN_BUZZER);
+  gpio_set_dir(PIN_BUZZER, GPIO_OUT);
+  gpio_put(PIN_BUZZER, 0);
 }
 
 static void buzzer_start(uint16_t frequency) {
@@ -30,6 +35,10 @@ static void buzzer_start(uint16_t frequency) {
     buzzer_stop();
     return;
   }
+
+  // Repasse la broche sous contrôle du module PWM
+  gpio_set_function(PIN_BUZZER, GPIO_FUNC_PWM);
+
   uint slice_num = pwm_gpio_to_slice_num(PIN_BUZZER);
   uint channel = pwm_gpio_to_channel(PIN_BUZZER);
   

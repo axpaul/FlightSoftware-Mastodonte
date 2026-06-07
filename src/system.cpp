@@ -8,6 +8,7 @@
 
 #include "system.h"
 #include "log.h"
+#include "hardware/i2c.h"
 
 Adafruit_NeoPixel rgb(1, PIN_LED_WS2812, NEO_GRB + NEO_KHZ800);
 
@@ -105,6 +106,22 @@ void setup_pin(void){
   gpio_pull_up(NFAUT_M3);
 }
 
+void system_i2c_init(void) {
+  log_entry("[SYSTEM] Initialisation I2C1 (GP6=SDA, GP7=SCL) a 400 kHz");
+  debug_println("[SYSTEM] Initialisation I2C1 (GP6=SDA, GP7=SCL) a 400 kHz...");
+
+  // Initialise i2c1 à 400 kHz
+  i2c_init(i2c1, 400000);
+  
+  // Configure les broches pour la fonction I2C
+  gpio_set_function(PIN_I2C1_SDA, GPIO_FUNC_I2C);
+  gpio_set_function(PIN_I2C1_SCL, GPIO_FUNC_I2C);
+  
+  // Active les pull-ups internes
+  gpio_pull_up(PIN_I2C1_SDA);
+  gpio_pull_up(PIN_I2C1_SCL);
+}
+
 
 void setup_rgb(void){
   rgb.begin();
@@ -143,6 +160,7 @@ uint32_t get_state_color(rocket_state_t state) {
       case DESCEND:      return rgb.Color(255, 0, 255);   // Magenta : descente
       case TOUCHDOWN:    return rgb.Color(0, 255, 0);     // Vert fixe : au sol, OK
       case ERROR_SEQ:    
+      case ERROR_MOTOR:
       default:           return rgb.Color(255, 0, 0);     // Rouge : erreur
   }
 }
@@ -231,6 +249,11 @@ void apply_state_config(rocket_state_t state) {
       // === État : Erreur système / séquence ===
       case ERROR_SEQ:
           setBuzzer(true, 500, 250, 500);           // Bip rapide et aigu
+          break;
+
+      // === État : Erreur moteur ===
+      case ERROR_MOTOR:
+          setBuzzer(true, 300, 150, 600);           // Bip très rapide
           break;
   }
 

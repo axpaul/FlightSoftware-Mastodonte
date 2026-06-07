@@ -61,6 +61,11 @@ rocket_state_t seq_touchdown(void);
 void seq_gpio_callback(uint gpio, uint32_t events);
 
 /**
+ * @brief Callback d'interruption déclenchée à chaque nouvelle donnée barométrique prête (25 Hz).
+ */
+void seq_baro_drdy_callback(void);
+
+/**
  * @brief Callback d'alarme déclenchée pour ouvrir la fenêtre d'ouverture du parachute.
  */
 int64_t seq_is_window_open_callback(alarm_id_t id, void* user_data);

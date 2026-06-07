@@ -59,6 +59,11 @@ float temperature_read_mcu(void);
 void setup_pin(void);
 
 /**
+ * @brief Initialise le bus matériel I2C1 pour les capteurs onboard (Berry MiniSensor).
+ */
+void system_i2c_init(void);
+
+/**
  * @brief Configure les interruptions du système.
  */
 void setup_interrupt(void);

@@ -11,19 +11,38 @@
 #include "hardware/gpio.h"
 #include "debug.h"
 #include <stdlib.h>
+#include "system.h"
 
 // === Callbacks d'interruption en cas de défaut sur les moteurs ===
 static void motor1_fault_handler(void) {
-    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 1 !");
-    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 1 !");
+    gpio_set_irq_enabled(NFAUT_M1, GPIO_IRQ_EDGE_FALL, false);
+    drv8872_stop(&motor1);
+    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 1 ! Arret de securite.");
+    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 1 ! Arret de securite.");
+    if (currentState == PRE_FLIGHT || currentState == PYRO_RDY) {
+        currentState = ERROR_MOTOR;
+        apply_state_config(ERROR_MOTOR);
+    }
 }
 static void motor2_fault_handler(void) {
-    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 2 !");
-    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 2 !");
+    gpio_set_irq_enabled(NFAUT_M2, GPIO_IRQ_EDGE_FALL, false);
+    drv8872_stop(&motor2);
+    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 2 ! Arret de securite.");
+    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 2 ! Arret de securite.");
+    if (currentState == PRE_FLIGHT || currentState == PYRO_RDY) {
+        currentState = ERROR_MOTOR;
+        apply_state_config(ERROR_MOTOR);
+    }
 }
 static void motor3_fault_handler(void) {
-    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 3 !");
-    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 3 !");
+    gpio_set_irq_enabled(NFAUT_M3, GPIO_IRQ_EDGE_FALL, false);
+    drv8872_stop(&motor3);
+    log_entry("[DRV] DEFAUT : Probleme detecte sur le Moteur 3 ! Arret de securite.");
+    debug_println("[DRV] DEFAUT : Probleme detecte sur le Moteur 3 ! Arret de securite.");
+    if (currentState == PRE_FLIGHT || currentState == PYRO_RDY) {
+        currentState = ERROR_MOTOR;
+        apply_state_config(ERROR_MOTOR);
+    }
 }
 
 // === Définition de 3 instances de moteurs globalement accessibles ===
@@ -70,24 +89,40 @@ drv8872_t* drv8872_get(uint8_t index) {
 // === Contrôles basiques ===
 void drv8872_forward(drv8872_t* drv) {
     log_entryf("[DRV] Forward motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
+    gpio_init(drv->in1_pin);
+    gpio_init(drv->in2_pin);
+    gpio_set_dir(drv->in1_pin, GPIO_OUT);
+    gpio_set_dir(drv->in2_pin, GPIO_OUT);
     gpio_put(drv->in1_pin, 1);
     gpio_put(drv->in2_pin, 0);
 }
 
 void drv8872_reverse(drv8872_t* drv) {
     log_entryf("[DRV] Reverse motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
+    gpio_init(drv->in1_pin);
+    gpio_init(drv->in2_pin);
+    gpio_set_dir(drv->in1_pin, GPIO_OUT);
+    gpio_set_dir(drv->in2_pin, GPIO_OUT);
     gpio_put(drv->in1_pin, 0);
     gpio_put(drv->in2_pin, 1);
 }
 
 void drv8872_brake(drv8872_t* drv) {
     log_entryf("[DRV] Brake motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
+    gpio_init(drv->in1_pin);
+    gpio_init(drv->in2_pin);
+    gpio_set_dir(drv->in1_pin, GPIO_OUT);
+    gpio_set_dir(drv->in2_pin, GPIO_OUT);
     gpio_put(drv->in1_pin, 1);
     gpio_put(drv->in2_pin, 1);
 }
 
 void drv8872_stop(drv8872_t* drv) {
     log_entryf("[DRV] Stop motor (IN1=%d, IN2=%d)", drv->in1_pin, drv->in2_pin);
+    gpio_init(drv->in1_pin);
+    gpio_init(drv->in2_pin);
+    gpio_set_dir(drv->in1_pin, GPIO_OUT);
+    gpio_set_dir(drv->in2_pin, GPIO_OUT);
     gpio_put(drv->in1_pin, 0);
     gpio_put(drv->in2_pin, 0);
 }
@@ -196,4 +231,58 @@ void motor_diag_test_sequence(void) {
     debug_println("[MOTOR_DIAG] Stop"); sleep_ms(1000); motor_diag_log_faults();
 
     debug_println("[MOTOR_DIAG] Test complete");
+}
+
+bool drv8872_test_short_circuit(drv8872_t* drv) {
+    if (!drv) return false;
+
+    // 1. Désactive temporairement l'interruption sur ce pin nFAULT pour éviter d'invoquer l'ISR de défaut
+    gpio_set_irq_enabled(drv->fault_pin, GPIO_IRQ_EDGE_FALL, false);
+
+    // 2. Pulse brièvement le moteur (IN1=1, IN2=0) en marche avant
+    gpio_put(drv->in1_pin, 1);
+    gpio_put(drv->in2_pin, 0);
+
+    // 3. Attend 2 millisecondes pour laisser le temps au DRV8872 de réagir et de lever le défaut
+    sleep_ms(2);
+
+    // 4. Lit le niveau logique de nFAULT. S'il est LOW, c'est qu'un court-circuit ou une surcharge est actif.
+    bool has_fault = (gpio_get(drv->fault_pin) == 0);
+
+    // 5. Arrête le moteur immédiatement (IN1=0, IN2=0)
+    gpio_put(drv->in1_pin, 0);
+    gpio_put(drv->in2_pin, 0);
+
+    // Attente supplémentaire de sécurité pour s'assurer que la puce dissipe l'énergie et que nFAULT remonte
+    sleep_ms(1);
+
+    // 6. Réactive l'interruption pour le fonctionnement normal
+    gpio_set_irq_enabled(drv->fault_pin, GPIO_IRQ_EDGE_FALL, true);
+
+    return has_fault;
+}
+
+bool motor_diag_run_self_test(void) {
+    log_entry("[MOTOR_DIAG] Startup self-test initiated");
+    bool success = true;
+
+    bool m1 = drv8872_test_short_circuit(&motor1);
+    bool m2 = drv8872_test_short_circuit(&motor2);
+    bool m3 = drv8872_test_short_circuit(&motor3);
+
+    debug_printf("       - Moteur 1 : %s\n", m1 ? "DEFAUT" : "OK");
+    debug_printf("       - Moteur 2 : %s\n", m2 ? "DEFAUT" : "OK");
+    debug_printf("       - Moteur 3 : %s\n", m3 ? "DEFAUT" : "OK");
+
+    if (m1) { log_entry("[MOTOR_DIAG] ERROR: Short-circuit on Motor 1"); success = false; }
+    if (m2) { log_entry("[MOTOR_DIAG] ERROR: Short-circuit on Motor 2"); success = false; }
+    if (m3) { log_entry("[MOTOR_DIAG] ERROR: Short-circuit on Motor 3"); success = false; }
+
+    if (success) {
+        log_entry("[MOTOR_DIAG] Self-test passed successfully");
+    } else {
+        log_entry("[MOTOR_DIAG] Self-test failed");
+    }
+
+    return success;
 }

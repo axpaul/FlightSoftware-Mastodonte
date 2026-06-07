@@ -129,4 +129,16 @@ void motor_diag_test_sequence(void);
  */
 void motor_diag_log_faults(void);
 
+/**
+ * @brief Teste activement la présence d'un court-circuit sur le moteur en lui envoyant une impulsion de 2ms.
+ * @return true si un défaut (court-circuit/surcharge) est détecté, false sinon.
+ */
+bool drv8872_test_short_circuit(drv8872_t* drv);
+
+/**
+ * @brief Exécute un autotest actif sur tous les moteurs déclarés.
+ * @return true si TOUS les moteurs ont passé l'autotest avec succès, false si un défaut est détecté.
+ */
+bool motor_diag_run_self_test(void);
+
 #endif // DRV8872_H

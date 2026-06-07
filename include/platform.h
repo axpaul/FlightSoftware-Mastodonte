@@ -55,10 +55,11 @@
 // Input Octocoupler (J9, J14)
 #define PIN_OCTO_N3         3   // J9 PIN 1 - 74HC14 Smitch triger
 #define PIN_OCTO_N4         4   // J14 PIN 1 - 74HC14 Smitch triger
+#define PIN_BARO_INT        5   // GP5 - Barometer LPS22HB Interrupt (DRDY)
 
 // === Board and firmware information ===
 #define BOARD_NAME_SYS "YD-RP2040 Mastodonte"
-#define FW_VERSION "v0.1.1"
+#define FW_VERSION "v0.2.0"
 
 /**
  * @brief États de la machine d'état (FSM) du séquenceur de vol.
@@ -72,7 +73,8 @@ typedef enum {
     DEPLOY_TIMER,    // Déploiement de secours activé par temporisation
     DESCEND,         // Phase de descente sous parachute
     TOUCHDOWN,       // Fusée au sol, fin de mission sécurisée
-    ERROR_SEQ        // État d'erreur ou d'anomalie système
+    ERROR_SEQ,       // État d'erreur ou d'anomalie système
+    ERROR_MOTOR      // État d'erreur moteur (court-circuit, surchauffe...)
 } rocket_state_t;
 
 #endif // BOARD_HEADER_FILE
