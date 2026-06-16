@@ -164,18 +164,3 @@ Le bouton connecté sur **GPIO 24** est lu au démarrage :
 - **Appui long (5 secondes)** : Efface complètement le fichier de logs de la mémoire flash interne.
 
 ---
-
-## Module de Capteurs : BR Mini Sensor
-
-La **BR Mini Sensor** est une carte mezzanine compatible de la Raspberry Pico qui comporte :
-- Un accéléromètre 3 axes
-- Un Gyromètre 3 axes
-- Un capteur de pression permettant de mesurer l'altitude
-
-Ces fonctions sont basées sur l'utilisation des composants **LSM6DSL** et **LPS22HB** du fabricant STMicroelectronics.
-
-<p align="center">
-  <img src="docs/Br_mini_sensor.png" alt="BR Mini Sensor" width="350"/>
-</p>
-
-La carte **BR Mini Sensor** vous permettra moyennant un peu de code de mesurer et d'enregistrer les paramètres de vol de votre fusée **BR Mini Origin** (ou autre) afin d'en estimer la trajectoire.
