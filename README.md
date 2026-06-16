@@ -164,3 +164,10 @@ Le bouton connecté sur **GPIO 24** est lu au démarrage :
 - **Appui long (5 secondes)** : Efface complètement le fichier de logs de la mémoire flash interne.
 
 ---
+
+## 🛰️ Option : Carte Capteurs BR Mini Sensor
+
+Ce logiciel prend en charge l'acquisition et le filtrage des données de vol (Kalman 1D) via la carte mezzanine **BR Mini Sensor** (équipée d'un accéléromètre/gyromètre LSM6DSL et d'un baromètre LPS22HB).
+
+Pour plus d'informations sur le câblage, le brochage et les détails matériels de cette carte, veuillez vous référer à la documentation officielle :
+👉 **[Wiki BR Mini Sensor](https://berryrocket.com/wiki/BR_Mini_Sensor)**
