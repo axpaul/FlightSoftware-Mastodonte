@@ -4,7 +4,7 @@
 Il fait office de **séquenceur de vol**, gérant les événements critiques en temps réel et les interfaces matérielles durant la mission.
 
 > *© 2025/2026 - Paul Miailhe.*  
-> *Le code source de ce micrologiciel est sous licence GNU GPL v3. [→ GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0)*
+> *This firmware source code is licensed under GNU General Public License v3. [→ GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0)*
 
 [![BerryRocket](https://img.shields.io/badge/Berry-Rocket-red?style=flat-square&logo=rocket&logoColor=white)](https://berryrocket.com)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-red?style=flat-square&logo=gnu&logoColor=white)](https://www.gnu.org/licenses/gpl-3.0)
