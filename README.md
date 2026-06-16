@@ -117,7 +117,7 @@ Le téléversement se fait via USB :
 
 ---
 
-## 🛡️ Tolérance aux Pannes & Diagnostics
+## Tolérance aux Pannes & Diagnostics
 
 ### Signaux Sonores de Démarrage (Beep Codes)
 Au démarrage, le buzzer fournit un diagnostic audio immédiat de l'état du système :
@@ -135,7 +135,7 @@ Si le baromètre est déconnecté physiquement ou perd son alimentation pendant 
 
 ---
 
-## 🚦 États du Séquenceur de Vol
+## États du Séquenceur de Vol
 
 La logique de vol est pilotée par une machine d'état finie (`sequencer.cpp`). Chaque état configure une couleur de LED RGB et un motif sonore spécifique pour un retour d'information clair à l'opérateur.
 
@@ -165,7 +165,7 @@ Le bouton connecté sur **GPIO 24** est lu au démarrage :
 
 ---
 
-## 🛰️ Module de Capteurs : BR Mini Sensor
+## Module de Capteurs : BR Mini Sensor
 
 La **BR Mini Sensor** est une carte mezzanine compatible de la Raspberry Pico qui comporte :
 - Un accéléromètre 3 axes
@@ -176,10 +176,6 @@ Ces fonctions sont basées sur l'utilisation des composants **LSM6DSL** et **LPS
 
 <p align="center">
   <img src="docs/Br_mini_sensor.png" alt="BR Mini Sensor" width="350"/>
-  <img src="docs/Br-mini-sensor_pinout.png" alt="Pinout BR Mini Sensor" width="400"/>
 </p>
-
-> [!NOTE]
-> En raison de leur petite taille, ces composants sont très difficiles à souder à moins de disposer d'un four à refusion. C'est pourquoi vous trouverez une version prête à l'emploi sur notre boutique en ligne.
 
 La carte **BR Mini Sensor** vous permettra moyennant un peu de code de mesurer et d'enregistrer les paramètres de vol de votre fusée **BR Mini Origin** (ou autre) afin d'en estimer la trajectoire.
