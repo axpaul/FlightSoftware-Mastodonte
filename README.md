@@ -3,7 +3,7 @@
 **FlightSoftware-Mastodonte** est le logiciel de vol embarqué s'exécutant sur le contrôleur **YD-RP2040** de la fusée expérimentale **Mastodonte**.  
 Il fait office de **séquenceur de vol**, gérant les événements critiques en temps réel et les interfaces matérielles durant la mission.
 
-> *© 2025/2026 - Paul Miailhe.*  
+> *Copyright (c) 2025/2026 - Paul Miailhe.*  
 > *This firmware source code is licensed under GNU General Public License v3. [→ GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0)*
 
 [![BerryRocket](https://img.shields.io/badge/Berry-Rocket-red?style=flat-square&logo=rocket&logoColor=white)](https://berryrocket.com)
