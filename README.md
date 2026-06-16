@@ -1,11 +1,11 @@
 # Logiciel de Vol Mastodonte
 
-[![License: BerryRocket](https://img.shields.io/badge/License-BerryRocket-red.svg?style=flat-square&logo=data%3Aimage%2Fpng%3Bbase64%2CiVBORw0KGgoAAAANS%2BZi46zxiGum1iI2zxjGJpl7aLsi1GlhK74s2KdTAisO01SD2eIokv3PuC8oJXytEh4m7fZ04d1Z9dxkXp74Jv8RYcTpKyV6JpOXzieNyVQjHtiVzcam343X1gN8%2FUUzHSU9GyEmoLe209FDo1AvokoXDZDloqtYh8%2FlmxMOGpKnLicNReLoClvO2DtZ2mIpTY6niTtrS1rD5K2r7dcAOPKOy%2BoEuIEQsN7ob4eRm4tW4PbTVCUX%2FzjjjAOE%2F7fbkRXd%2Bd%2B3jNb84FexVOme7xJe8g2xzCmwT6plybOFdJhguMTr%2FJxO2Ne9Fp0Qyxxry5YoeYp2W7%2BZSG1mW5HKEj%2BsO%2FR2ex7c5Vew2W1lzh38j15Ha2teUklzK5ruSVjPVhjehYh1npuPv51%2Bjy9hzczf5azNM6KkTuH%2F43LmYsxrkRr8FwseXB1%2B76IhgdVj7eziCJG%2FS2nGTevWR5hEMN0g%2FBHA1W2AxGBA%2FuLXZ7UP%2FuCOrXHfmLNsBOy%2Bj1JVtQdarlFqSRWtqLE%2BdJlDNOvK1b%2BaSYnIaHAxRU4fSiqpl3dd6IoSiqQgLFaajgjx%2FQPt0fMTPSkUjFcfjPB%2BHhN2fphzwevY%2BppYLiQ2MBzdDCJ9Q847R6jyQz3yEI6z6uLXC8UsP7du9YKS%2BZ%2BsJSGHLyEf3CGERP%2FRklowz6bglIPbYN4emDxXvcOWgphU1w8Ejd57Q4kVIB8HT5DcleJ1hHzdIneo1leNogWoG%2BR%2B7sZbC6TjgiJ4jn6SIKnZa2HSOh79EJxtxCWKtqxQGzwZDHUeQz9mznnU68990TxpGO%2FiVsMBJlLTdo7vCpBu9%2FGuFjmeHXD1C%2Ftfw6%2FmfBjoV%2FwIIP1vJ50GkyjSY1qW6kdHcjPCUYvzLfdbbawN1BhneV9bfEqqYFK1b%2BCXO3vccO7qUml%2FQtyi9fnORKeNvh%2BhLcdEgrit0x3W75465du4bVq%2Fm4EktJs0geH%2ByLk8wyq%2BC4%2Bruai8inotQXmo%2Fm3NxcpKeno66u7hw1%2Bf87reKrk%2FWktCq75b8Lq85jTX0%2BcmgJMznn3DaR0ci2WCzIyclBVlYWUlNTUVxczDk4nsSVV6v4MnDc4UV3EWkBKa63JhSrA1LI2Ppvjt6ahXFL5rNj3OQ%2FG0k8ksXZuy2e1slG2Cs%2B)](https://berryrocket.com)
-
 **FlightSoftware-Mastodonte** est le logiciel de vol embarqué s'exécutant sur le contrôleur **YD-RP2040** de la fusée expérimentale **Mastodonte**.  
 Il fait office de **séquenceur de vol**, gérant les événements critiques en temps réel et les interfaces matérielles durant la mission.
 
 > © 2025 Paul Miailhe – Conçu pour les systèmes embarqués de fusées critiques en matière de sécurité.
+
+[![BerryRocket](https://img.shields.io/badge/Berry-Rocket-red?style=flat-square&logo=rocket&logoColor=white)](https://berryrocket.com)
 
 ---
 
