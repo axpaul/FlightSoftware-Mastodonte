@@ -277,3 +277,35 @@ void lps22hb_drdy_callback(void) {
         }
     }
 }
+
+#ifdef UNIT_TEST
+void lps22hb_set_kalman_state(float z, float v) {
+    kalman_z = z;
+    kalman_v = v;
+}
+void lps22hb_set_ground_pressure(float p) {
+    ground_pressure = p;
+}
+void lps22hb_set_baro_present(bool present) {
+    baro_present = present;
+}
+void lps22hb_test_apogee_detection_step(void) {
+    if (currentState == ASCEND || currentState == WINDOW) {
+        float z = kalman_z;
+        float v = kalman_v;
+
+        if (z > 15.0f && v < -1.0f) {
+            apogee_counter++;
+            if (apogee_counter >= 5) {
+                if (triggerBaroApogee == 0) {
+                    triggerBaroApogee = 1;
+                }
+            }
+        } else {
+            apogee_counter = 0;
+        }
+    }
+}
+#endif
+
+

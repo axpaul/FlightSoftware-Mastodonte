@@ -95,4 +95,13 @@ float lps22hb_get_ground_pressure(void);
  */
 void lps22hb_drdy_callback(void);
 
+#ifdef UNIT_TEST
+void lps22hb_set_kalman_state(float z, float v);
+void lps22hb_set_ground_pressure(float p);
+void lps22hb_set_baro_present(bool present);
+void lps22hb_test_apogee_detection_step(void);
+#endif
+
+
 #endif // LPS22HB_HEADER_FILE
+
