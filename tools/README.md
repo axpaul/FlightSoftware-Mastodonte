@@ -69,9 +69,16 @@ Détection de l'atterrissage à t = 26.48 s (impact à t = 23.28s)
 ### B. Graphiques de Simulation (`flight_simulation.png`)
 Le script génère et sauvegarde un graphique nommé `flight_simulation.png` dans ce dossier `tools/` (ce fichier est configuré dans le `.gitignore` pour ne pas encombrer le dépôt git).
 
+Voici un aperçu du rendu obtenu avec les réglages de confiance par défaut ($Q_{\text{alt}}=0.1$, $Q_{\text{vel}}=0.5$, $R_{\text{alt}}=1.0$) :
+
+<p align="center">
+  <img src="../docs/flight_simulation_preview.png" alt="Aperçu de la Simulation" width="750"/>
+</p>
+
 Le graphique contient deux courbes synchronisées :
 1. **Altitude** : Affiche les mesures brutes du baromètre (Excel) par rapport à l'altitude estimée par le filtre de Kalman, ainsi que le point précis du déclenchement de l'apogée.
 2. **Vitesse verticale ($v_z$)** : Affiche la vitesse réelle issue d'Excel face à la vitesse estimée par Kalman, le seuil de détection d'apogée ($-1.0\text{ m/s}$), le point d'apogée détecté et le point de Touchdown.
+
 
 ---
 
