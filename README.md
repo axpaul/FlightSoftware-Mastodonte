@@ -1,7 +1,7 @@
 # Logiciel de Vol Mastodonte
 
-**FlightSoftware-Mastodonte** est le logiciel de vol embarqué s'exécutant sur le contrôleur **YD-RP2040** de la fusée expérimentale **Mastodonte**.  
-Il fait office de **séquenceur de vol**, gérant les événements critiques en temps réel et les interfaces matérielles durant la mission.
+**FlightSoftware-Mastodonte** est le micrologiciel de vol critique embarqué s'exécutant sur le contrôleur **YD-RP2040** de la fusée expérimentale **Mastodonte**. 
+Conçu pour orchestrer les événements de vol temps réel avec des garanties de haute fiabilité, il assure l'acquisition de données à haute fréquence, le filtrage de trajectoire par Kalman, la détection redondante de l'apogée, et le pilotage sécurisé des actionneurs de récupération (moteurs de déploiement).
 
 > *Copyright (c) 2025/2026 - Paul Miailhe.*  
 > *This firmware source code is licensed under GNU General Public License v3. [→ GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0)*
@@ -17,26 +17,25 @@ Il fait office de **séquenceur de vol**, gérant les événements critiques en 
 
 ---
 
-## Fonctionnalités
+## 🛠️ Fonctionnalités Clefs
 
-- **Cœur natif Pico SDK** : Pilote I2C bas niveau personnalisé (accès direct aux registres) pour les capteurs sur le bus `i2c1` (GP6/GP7) fonctionnant à 400 kHz.
-- **Filtrage de Kalman 1D** : Estimateur fonctionnant à 25 Hz synchronisé sur l'interruption matérielle `GP5` (DRDY) pour suivre l'altitude et la vitesse verticale.
-- **Détection d'apogée** : Détection multi-capteurs redondante combinant deux optocoupleurs et le déclencheur d'apogée du filtre de Kalman ($z > 15\text{ m}$ et $v_z \le -1.0\text{ m/s}$ sur 5 échantillons consécutifs).
-- **Autotest de sécurité et alarme** : Autotest automatique de l'état des capteurs au démarrage ; si le baromètre est absent, le système émet 3 bips (au lieu de 2) et bascule en toute sécurité en **Mode de vol fenêtré uniquement** (secours temporel).
-- **Surveillance de batterie non bloquante** : Mesure continue de la tension de la batterie via un timer matériel (fréquence de 1 Hz) avec alertes LED intelligentes lorsque $V_{cc} \le 6.0\text{V}$.
-- **Contrôleur de pont en H pour la récupération** : Contrôle autonome et sécurisé des moteurs de récupération avec désactivation temporaire de la détection de défaut au décollage (évite les déclenchements intempestifs dus aux pics de courant).
-- **Liaison Série USB & LittleFS** : Vidage des logs de vol via liaison série USB, et bouton physique GP24 pour effacer ou lire les logs stockés sur le système de fichiers LittleFS de la flash.
-- **Support CMSIS-DAP** : Flashage et débogage matériel via SWD.
+- **Cœur natif Pico SDK (I2C Dédié)** : Implémentation d'un pilote I2C bas niveau personnalisé (accès direct aux registres matériels) pour les capteurs sur le bus `i2c1` (GP6/GP7) cadencé à 400 kHz, assurant des transactions ultra-rapides et déterministes.
+- **Filtrage de Kalman 1D Temps Réel** : Estimateur d'état à deux variables (altitude et vitesse verticale) fonctionnant à 25 Hz, synchronisé de manière stricte sur l'interruption matérielle de la broche `GP5` (Data-Ready du baromètre).
+- **Détection d'Apogée Triplement Redondante** : Fusion de données combinant l'algorithme de vitesse de Kalman ($z > 15\text{ m}$ et $v_z \le -1.0\text{ m/s}$ sur 5 cycles consécutifs, soit ~200 ms) et la détection d'état de deux interrupteurs physiques via optocoupleurs matériels.
+- **Autotests & Diagnostics Moteurs** : Diagnostic complet des ponts en H `DRV8872` au démarrage pour détecter d'éventuels courts-circuits ou surchauffes. Gestion d'un bypass temporaire des interruptions de défaut au moment de l'allumage pour tolérer les pics de courant initiaux des moteurs.
+- **Surveillance Batterie & Sécurité** : Mesure de tension via convertisseur ADC (GP28) cadencée à 1 Hz avec alertes visuelles dynamiques (clignotement de la LED d'état RGB WS2812B en cas de tension $\le 6.0\text{V}$).
+- **Journalisation sur Flash LittleFS** : Écriture asynchrone non bloquante des événements de vol et des données de télémétrie sur le système de fichiers LittleFS (mémoire flash interne du RP2040) pour analyse post-vol.
+- **Support CMSIS-DAP** : Entièrement compatible avec les sondes de débogage SWD pour l'acquisition en direct des variables de vol et le flashage rapide.
 
 ---
 
-## Architecture Logicielle
+## 📐 Architecture Logicielle
 
-Le logiciel de vol est structuré de manière modulaire en C++ afin de garantir la prévisibilité, la sécurité d'exécution et la séparation des responsabilités.
+Le code source est structuré selon une approche modulaire stricte, séparant l'abstraction matérielle (HAL), la logique de la machine d'état de vol, et les tâches asynchrones d'arrière-plan.
 
 ```mermaid
 graph TD
-    Main[main.cpp <br/> Orchestrator] -->|Initialise et cadence| Sys[system.cpp <br/> Abstraction Matérielle et Santé]
+    Main[main.cpp <br/> Orchestrateur] -->|Initialise et cadence| Sys[system.cpp <br/> Abstraction Matérielle et Santé]
     Main -->|Cadence| Seq[sequencer.cpp <br/> Séquenceur de Vol FSM]
     Seq -->|Enregistre les événements| Log[log.cpp <br/> Journalisation LittleFS Flash]
     Seq -->|Déclenche| Buzzer[buzzer.cpp <br/> Retours audio PWM]
@@ -46,15 +45,13 @@ graph TD
     Seq -->|Lit l'accélération| IMU[lsm6dsl.cpp <br/> IMU bas niveau]
 ```
 
-### Description des Modules
+### Description des Modules principaux
 
-- **`main.cpp` (Orchestrateur)** : Gère la phase de démarrage, effectue l'autotest des moteurs et des capteurs, configure les interruptions GPIO et exécute la boucle principale.
-- **`sequencer.cpp` (Logique de vol)** : Pilote la machine d'état (FSM) de vol (de `PRE_FLIGHT` à `TOUCHDOWN`), écoute les broches d'interruption (Jack, RBF) et active les moteurs de déploiement.
-- **`lps22hb.cpp` & `lsm6dsl.cpp` (Capteurs)** : Implémentations bas niveau natives Pico SDK pour le baromètre et l'IMU.
-- **`system.cpp` (Abstraction matérielle)** : Initialise les GPIOs, la LED RGB statut (WS2812B) et la mesure de tension batterie (ADC).
-- **`buzzer.cpp` (Retours audio)** : Génère des motifs sonores non bloquants à l'aide d'un slice PWM matériel pour indiquer l'état du système.
-- **`log.cpp` (Journalisation)** : Enregistre de façon non bloquante les événements de vol dans la flash interne via LittleFS.
-- **`drv8872.cpp` (Moteurs)** : Contrôle les ponts en H pour les moteurs d'éjection des parachutes.
+*   **`main.cpp` (Orchestrateur)** : Le point d'entrée central du système. Il orchestre la phase d'initialisation matérielle dans `setup()` (diagnostics,LittleFS, capteurs) et cadence l'exécution du séquenceur, de la batterie et de l'écriture des logs dans `loop()`.
+*   **`sequencer.cpp` (Logique de vol / FSM)** : Implémente la machine d'état finie (FSM) gérant les états de vol (du sol `PRE_FLIGHT` à l'atterrissage `TOUCHDOWN`). Il réagit exclusivement aux interruptions matérielles (Jack de décollage et RBF) pour assurer des transitions instantanées et déterministes.
+*   **`lps22hb.cpp` & `lsm6dsl.cpp` (Pilotes Capteurs)** : Modules bas niveau communiquant directement avec les registres I2C. Le pilote du baromètre gère le filtre de Kalman 1D et l'algorithme de détection d'apogée dans sa propre routine d'interruption (ISR).
+*   **`system.cpp` (HAL)** : Regroupe le contrôle matériel des broches GPIO de la carte, la gestion de la LED RGB intégrée (WS2812B) et le chronométrage du timer de tension de batterie.
+*   **`log.cpp` (Journalisation de vol)** : Enregistreur robuste utilisant LittleFS. Il stocke les logs dans un tampon RAM et n'écrit physiquement sur la flash qu'à des instants précis du vol afin de ne jamais perturber la boucle critique.
 
 ---
 
