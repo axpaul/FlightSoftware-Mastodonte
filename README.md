@@ -1,7 +1,7 @@
 # Logiciel de Vol Mastodonte
 
 **FlightSoftware-Mastodonte** est le micrologiciel de vol critique embarqué s'exécutant sur le contrôleur **YD-RP2040** de la fusée expérimentale **Mastodonte**. 
-Conçu pour orchestrer les événements de vol temps réel avec des garanties de haute fiabilité, il assure l'acquisition de données à haute fréquence, le filtrage de trajectoire par Kalman, la détection redondante de l'apogée, et le pilotage sécurisé des actionneurs de récupération (moteurs de déploiement).
+Conçu pour orchestrer les événements de vol temps réel, il assure l'acquisition de données à haute fréquence, le filtrage de trajectoire par Kalman, la détection redondante de l'apogée, et le pilotage sécurisé des actionneurs de récupération (moteurs de déploiement).
 
 > *Copyright (c) 2025/2026 - Paul Miailhe.*  
 > *This firmware source code is licensed under GNU General Public License v3. [→ GNU GPLv3](https://www.gnu.org/licenses/gpl-3.0)*
