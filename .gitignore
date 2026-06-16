@@ -3,3 +3,12 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
+
+# Python Virtual Environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# Simulation artifacts
+tools/flight_simulation.png
+tools/temp_stabtraj.xlsx

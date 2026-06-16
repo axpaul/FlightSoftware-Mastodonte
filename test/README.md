@@ -57,3 +57,15 @@ Pour téléverser les tests sur le RP2040 (via votre sonde CMSIS-DAP) et exécut
 ```powershell
 pio test -e pico_test
 ```
+
+---
+
+## 4. Vérification et Simulation du Filtre de Kalman (Python)
+
+Pour analyser et valider le comportement du filtre de Kalman 1D par rapport aux données théoriques et réelles de vol (sans nécessiter de carte physique connectée), un script de simulation Python est disponible.
+
+Ce script simule précisément le comportement du micrologiciel C++ (boucle à 25 Hz, calculs de prédiction/correction, machine d'état FSM, compteurs de confirmation d'apogée et de touchdown) en utilisant la trajectoire importée de l'Excel [test/stabtraj_v3-5-3.xlsx](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/FlightSoftware-Mastodonte/test/stabtraj_v3-5-3.xlsx).
+
+* **Emplacement du script :** [tools/simulate_flight.py](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/FlightSoftware-Mastodonte/tools/simulate_flight.py)
+* **Guide d'utilisation et d'ajustement du filtre :** Voir le [README de la simulation](file:///c:/Users/paulm/OneDrive/Documents/PlatformIO/Projects/FlightSoftware-Mastodonte/tools/README.md).
+
