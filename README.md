@@ -1,9 +1,9 @@
-# Flight Software Mastodonte
+# Logiciel de Vol Mastodonte
 
-**FlightSoftware-Mastodonte** is the embedded flight software running on the **YD-RP2040** controller of the experimental rocket **Mastodonte**.  
-It acts as the onboard **flight sequencer**, managing time-critical events and hardware interfaces during the mission.
+**FlightSoftware-Mastodonte** est le logiciel de vol embarqué s'exécutant sur le contrôleur **YD-RP2040** de la fusée expérimentale **Mastodonte**.  
+Il fait office de **séquenceur de vol**, gérant les événements critiques en temps réel et les interfaces matérielles durant la mission.
 
-> © 2025 Paul Miailhe – Designed for safety-critical embedded rocket systems.
+> © 2025 Paul Miailhe – Conçu pour les systèmes embarqués de fusées critiques en matière de sécurité.
 
 ---
 
@@ -13,76 +13,76 @@ It acts as the onboard **flight sequencer**, managing time-critical events and h
 
 ---
 
-## Features
+## Fonctionnalités
 
-- **Pico SDK Native Core**: Custom low-level registers-only I2C driver for sensors on `i2c1` (GP6/GP7) operating at 400 kHz.
-- **1D Kalman Filtering**: Estimator running at 25 Hz synchronized on `GP5` (DRDY) hardware interrupt to track altitude and vertical velocity.
-- **Apogee Detection**: Redundant multi-sensor detection combining dual optocouplers and Kalman filter apogee trigger ($z > 15\text{ m}$ and $v_z \le -1.0\text{ m/s}$ for 5 consecutive samples).
-- **Safety Auto-Bypass & Alarm**: Automatic sensor health autotest at boot; if the barometer is absent, the system emits 3 bips (instead of 2) and falls back safely to **Windowing Only Flight Mode**.
-- **Non-blocking battery monitoring**: Continuous voltage monitoring via hardware timer (1 Hz frequency) with smart LED warnings when $V_{cc} \le 6.0\text{V}$.
-- **H-Bridge Recovery Driver**: Autonomous safety control for recovery motors with temporary startup current spike bypass at liftoff.
-- **USB Mass Storage (MSC)**: Virtual read-only log dump simulator via USB serial, and physical GP24 button to dump/clear LittleFS logs.
-- **CMSIS-DAP support**: Flashing and debug support (SWD).
+- **Cœur natif Pico SDK** : Pilote I2C bas niveau personnalisé (accès direct aux registres) pour les capteurs sur le bus `i2c1` (GP6/GP7) fonctionnant à 400 kHz.
+- **Filtrage de Kalman 1D** : Estimateur fonctionnant à 25 Hz synchronisé sur l'interruption matérielle `GP5` (DRDY) pour suivre l'altitude et la vitesse verticale.
+- **Détection d'apogée** : Détection multi-capteurs redondante combinant deux optocoupleurs et le déclencheur d'apogée du filtre de Kalman ($z > 15\text{ m}$ et $v_z \le -1.0\text{ m/s}$ sur 5 échantillons consécutifs).
+- **Autotest de sécurité et alarme** : Autotest automatique de l'état des capteurs au démarrage ; si le baromètre est absent, le système émet 3 bips (au lieu de 2) et bascule en toute sécurité en **Mode de vol fenêtré uniquement** (secours temporel).
+- **Surveillance de batterie non bloquante** : Mesure continue de la tension de la batterie via un timer matériel (fréquence de 1 Hz) avec alertes LED intelligentes lorsque $V_{cc} \le 6.0\text{V}$.
+- **Contrôleur de pont en H pour la récupération** : Contrôle autonome et sécurisé des moteurs de récupération avec désactivation temporaire de la détection de défaut au décollage (évite les déclenchements intempestifs dus aux pics de courant).
+- **Liaison Série USB & LittleFS** : Vidage des logs de vol via liaison série USB, et bouton physique GP24 pour effacer ou lire les logs stockés sur le système de fichiers LittleFS de la flash.
+- **Support CMSIS-DAP** : Flashage et débogage matériel via SWD.
 
 ---
 
-## Software Architecture
+## Architecture Logicielle
 
-The flight software is built with a highly modular C++ structure to enforce separation of concerns, safety-critical execution, and predictability.
+Le logiciel de vol est structuré de manière modulaire en C++ afin de garantir la prévisibilité, la sécurité d'exécution et la séparation des responsabilités.
 
 ```mermaid
 graph TD
-    Main[main.cpp <br/> Orchestrator] -->|Initializes & Ticks| Sys[system.cpp <br/> Hardware Abstraction & Health]
-    Main -->|Ticks| Seq[sequencer.cpp <br/> Flight Sequencer FSM]
-    Seq -->|Logs events| Log[log.cpp <br/> LittleFS Flash Logging]
-    Seq -->|Triggers| Buzzer[buzzer.cpp <br/> PWM audio feedback]
-    Seq -->|Controls| Motors[drv8872.cpp <br/> Recovery H-Bridge]
-    Seq -->|Acquires via GP5 DRDY| Baro[lps22hb.cpp <br/> Low-level Barometer]
-    Baro -->|Estimates altitude/velocity| Kalman[1D Kalman Filter]
-    Seq -->|Reads acceleration| IMU[lsm6dsl.cpp <br/> Low-level IMU]
+    Main[main.cpp <br/> Orchestrator] -->|Initialise et cadence| Sys[system.cpp <br/> Abstraction Matérielle et Santé]
+    Main -->|Cadence| Seq[sequencer.cpp <br/> Séquenceur de Vol FSM]
+    Seq -->|Enregistre les événements| Log[log.cpp <br/> Journalisation LittleFS Flash]
+    Seq -->|Déclenche| Buzzer[buzzer.cpp <br/> Retours audio PWM]
+    Seq -->|Contrôle| Motors[drv8872.cpp <br/> Pont en H de Récupération]
+    Seq -->|Acquires via GP5 DRDY| Baro[lps22hb.cpp <br/> Baromètre bas niveau]
+    Baro -->|Estime altitude/vitesse| Kalman[Filtre de Kalman 1D]
+    Seq -->|Lit l'accélération| IMU[lsm6dsl.cpp <br/> IMU bas niveau]
 ```
 
-### Module Breakdown
+### Description des Modules
 
-- **`main.cpp` (Orchestrator)**: Handles boot check, sets up diagnostic logs/bips, configures GP5 interrupts, and runs the main loop.
-- **`sequencer.cpp` (Flight Logic)**: Drives the Finite State Machine (`PRE_FLIGHT` to `TOUCHDOWN`), implements the 1D Kalman filter loop on sensor interrupts, and triggers parachute deployment.
-- **`lps22hb.cpp` & `lsm6dsl.cpp` (Sensors)**: Low-level native Pico SDK driver implementations for the barometer and IMU.
-- **`system.cpp` (Hardware Abstraction)**: Manages physical pins, status RGB LED, and ADC battery checks.
-- **`buzzer.cpp` (Audio Feedback)**: Drives the passive buzzer using a hardware PWM slice.
-- **`log.cpp` (Logging System)**: Thread-safe, non-blocking log writer using LittleFS on flash.
-- **`drv8872.cpp` (Recovery Driver)**: Controls the recovery deployment H-bridge.
+- **`main.cpp` (Orchestrateur)** : Gère la phase de démarrage, effectue l'autotest des moteurs et des capteurs, configure les interruptions GPIO et exécute la boucle principale.
+- **`sequencer.cpp` (Logique de vol)** : Pilote la machine d'état (FSM) de vol (de `PRE_FLIGHT` à `TOUCHDOWN`), écoute les broches d'interruption (Jack, RBF) et active les moteurs de déploiement.
+- **`lps22hb.cpp` & `lsm6dsl.cpp` (Capteurs)** : Implémentations bas niveau natives Pico SDK pour le baromètre et l'IMU.
+- **`system.cpp` (Abstraction matérielle)** : Initialise les GPIOs, la LED RGB statut (WS2812B) et la mesure de tension batterie (ADC).
+- **`buzzer.cpp` (Retours audio)** : Génère des motifs sonores non bloquants à l'aide d'un slice PWM matériel pour indiquer l'état du système.
+- **`log.cpp` (Journalisation)** : Enregistre de façon non bloquante les événements de vol dans la flash interne via LittleFS.
+- **`drv8872.cpp` (Moteurs)** : Contrôle les ponts en H pour les moteurs d'éjection des parachutes.
 
 ---
 
-## Platform Configuration
+## Configuration Matérielle
 
-| Parameter           | Value                    |
+| Paramètre           | Valeur                    |
 |---------------------|--------------------------|
-| Board               | `YD-RP2040`              |
-| MCU                 | RP2040                   |
+| Carte               | `YD-RP2040`              |
+| Microcontrôleur     | RP2040                   |
 | Framework           | Arduino (earlephilhower) |
-| Debug protocol      | CMSIS-DAP (SWD)          |
-| Flash layout        | 1MB firmware / 15MB FS   |
-| Clock frequency     | 133 MHz                  |
-| USB stack           | TinyUSB                  |
-| Toolchain           | `toolchain-rp2040-earlephilhower` |
-| Build system        | PlatformIO               |
-| Battery Monitor Pin | GP28 (ADC2)              |
-| Baro INT (DRDY) Pin | GP5                      |
+| Protocole de debug  | CMSIS-DAP (SWD)          |
+| Découpage Flash     | 1 Mo firmware / 15 Mo FS |
+| Fréquence d'horloge | 133 MHz                  |
+| Pile USB            | TinyUSB                  |
+| Chaîne de compil.   | `toolchain-rp2040-earlephilhower` |
+| Système de build    | PlatformIO               |
+| Pin Mesure Batterie | GP28 (ADC2)              |
+| Pin Interrup. Baro  | GP5                      |
 
 ---
 
-## External Libraries
+## Bibliothèques Externes
 
-Declared in `platformio.ini`:
+Déclarées dans `platformio.ini` :
 
-| Library                      | Version   | Purpose                      |
-|-----------------------------|-----------|------------------------------|
-| Adafruit NeoPixel           | `1.12.5`  | WS2812B LED control          |
+| Bibliothèque                 | Version   | Rôle                             |
+|------------------------------|-----------|----------------------------------|
+| Adafruit NeoPixel            | `1.12.5`  | Contrôle de la LED WS2812B       |
 
 ---
 
-## Synoptic
+## Synoptique
 
 <p align="center">
   <img src="docs/Mastodonte_synoptique.png" alt="Synoptique Mastodonte" width="750"/>
@@ -90,36 +90,48 @@ Declared in `platformio.ini`:
 
 ---
 
-## 🚦 Flight Sequencer States
+## 🛡️ Tolérance aux Pannes & Diagnostics
 
-The system is driven by a finite state machine (`sequencer.cpp`) that transitions through various mission phases.  
-Each state configures RGB LED color and buzzer behavior to provide **visual and audible feedback**.
+### Signaux Sonores de Démarrage (Beep Codes)
+Au démarrage, le buzzer fournit un diagnostic audio immédiat de l'état du système :
+- **2 bips courts (1500 Hz)** : Initialisation du baromètre (`LPS22HB`) réussie.
+- **3 bips plus longs (1200 Hz)** : Échec de l'initialisation du baromètre ou capteur physiquement absent. Le système bascule automatiquement en **Mode de Vol Fenêtré Uniquement** (sécurité temporelle).
+- **2 bips courts (1500 Hz) après maintien de USR (GP24) pendant 5s** : Effacement réussi du fichier de logs sur la flash.
 
-| State           | Color (LED)      | Buzzer Pattern                      | Description |
-|------------------|------------------|--------------------------------------|-------------|
-| `PRE_FLIGHT`     | 🟢 Green          | 🔈 Double soft beep (3s pause)       | System idle on ground, RBF and JACK expected. |
-| `PYRO_RDY`       | 🟡 Yellow         | 🔈 1 low beep per second             | Ready for liftoff, RBF removed, JACK still in. |
-| `ASCEND`         | 🔵 Blue           | 🔈 Very fast beeping                 | Liftoff confirmed, rocket in ascent. |
-| `WINDOW`         | 🔵 Cyan           | 🔈 Rapid alert beeping               | Deployment window is open (timed or triggered). |
-| `DEPLOY_ALGO`    | 🟠 Orange         | 🔈 Alternating mid beeps             | Deployment triggered via algorithm (sensor). |
-| `DEPLOY_TIMER`   | 🟠 Orange         | 🔈 Alternating mid beeps             | Deployment triggered via timer timeout. |
-| `DESCEND`        | 🟣 Magenta        | 🔈 Slow and regular beeping          | Descent under parachute. |
-| `TOUCHDOWN`      | 🟢 Green (steady) | 🔈 Long beep every 30 seconds        | Touchdown detected, safe recovery state. |
-| `ERROR_SEQ`      | 🔴 Red            | 🔈 Rapid high-pitched beeping        | System fault or invalid state transition. |
+### Résilience en Vol face à une Déconnexion du Baromètre
+Si le baromètre est déconnecté physiquement ou perd son alimentation pendant le vol :
+1. **Sécurité CPU (Anti-figeage)** : Le contrôleur I2C du RP2040 détecte l'absence de réponse (NACK). Le pilote bas niveau non bloquant retourne instantanément un code d'erreur (`PICO_ERROR_GENERIC`) sans bloquer la boucle principale ni le séquenceur.
+2. **Désactivation des Interruptions** : Le baromètre générant lui-même les interruptions sur `GP5` (DRDY), sa déconnexion arrête l'envoi de ces signaux. Le callback `lps22hb_drdy_callback` cesse donc d'être exécuté, stoppant toute tentative de transaction I2C vers le capteur.
+3. **Timers de Secours du Séquenceur** :
+   - **Apogée / Déploiement** : Si le filtre de Kalman ne peut plus détecter l'apogée, le timer de fin de fenêtre de vol (`WINDOW_DURATION_US`) prend le relais pour déclencher le déploiement de secours (`DEPLOY_TIMER`).
+   - **Atterrissage (Touchdown)** : Si la stabilisation au sol ne peut plus être calculée par Kalman, un timer de descente théorique (`THEORETICAL_DESCENT_US`) force le passage à l'état final sécurisé `TOUCHDOWN`.
+
+---
+
+## 🚦 États du Séquenceur de Vol
+
+La logique de vol est pilotée par une machine d'état finie (`sequencer.cpp`). Chaque état configure une couleur de LED RGB et un motif sonore spécifique pour un retour d'information clair à l'opérateur.
+
+| État            | Couleur (LED)    | Motif du Buzzer                      | Description |
+|-----------------|------------------|--------------------------------------|-------------|
+| `PRE_FLIGHT`    | 🟢 Vert          | 🔈 Double bip doux (pause de 3s)     | Fusée au sol, en attente de l'armement (RBF inséré, Jack connecté). |
+| `PYRO_RDY`      | 🟡 Jaune         | 🔈 1 bip grave par seconde           | Armé et prêt pour le décollage (RBF retiré, Jack toujours connecté). |
+| `ASCEND`        | 🔵 Bleu          | 🔈 Bips très rapides                 | Décollage détecté (retrait du Jack), fusée en phase de montée. |
+| `WINDOW`        | 🔵 Cyan          | 🔈 Bips d'alerte rapides             | Fenêtre d'ouverture de la récupération ouverte. |
+| `DEPLOY_ALGO`   | 🟠 Orange        | 🔈 Bips alternés moyens              | Déploiement activé par détection algorithmique (capteurs). |
+| `DEPLOY_TIMER`  | 🟠 Orange        | 🔈 Bips alternés moyens              | Déploiement activé sur secours temporel. |
+| `DESCEND`       | 🟣 Magenta       | 🔈 Bips lents et réguliers           | Descente sous parachute. |
+| `TOUCHDOWN`     | 🟢 Vert (fixe)   | 🔈 Long bip toutes les 30 secondes   | Atterrissage détecté, sécurisation au sol. |
+| `ERROR_SEQ`     | 🔴 Rouge         | 🔈 Bips aigus très rapides           | Défaut système ou transition d'état invalide. |
 
 > [!TIP]
-> **Battery Warning Indication:**
-> If the battery voltage drops below **6.0V** during flight preparation (Pre-flight / Pyro Ready), the RGB LED will alternate between the **current state color** and **Red** every second. This alert is non-blocking to allow manual override but provides clear visual feedback of a low battery.
+> **Alerte de Tension Batterie Basse :**
+> Si la tension descend sous **6.0V** pendant la préparation (états `PRE_FLIGHT` ou `PYRO_RDY`), la LED clignote alternativement entre la **couleur de l'état actuel** et le **Rouge** toutes les secondes. Cette alerte n'est pas bloquante pour permettre un lancement forcé, mais signale une batterie faible.
 
 ---
 
-## 🔘 User Button USR (GP24) — Log Dump & Erase
+## 🔘 Bouton Utilisateur USR (GP24) — Lecture et Effacement
 
-A user-accessible button is connected to **GPIO 24** and is checked during system boot.
-
-- **Press and release**: Dumps log content to Serial @ **115200 baud**.
-- **Press and hold for 5 seconds**: Erases the entire log file from the onboard flash memory.
-
-This provides a fast and safe way to extract and reset logs without reflashing the system.
-
----
+Le bouton connecté sur **GPIO 24** est lu au démarrage :
+- **Appui court** : Vide le contenu des fichiers de logs vers la liaison série USB à **115200 bauds**.
+- **Appui long (5 secondes)** : Efface complètement le fichier de logs de la mémoire flash interne.

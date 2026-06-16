@@ -13,6 +13,10 @@
 #include <stdlib.h>
 #include "system.h"
 
+bool motor1_ok = true;
+bool motor2_ok = true;
+bool motor3_ok = true;
+
 // === Callbacks d'interruption en cas de défaut sur les moteurs ===
 static void motor1_fault_handler(void) {
     gpio_set_irq_enabled(NFAUT_M1, GPIO_IRQ_EDGE_FALL, false);
@@ -269,6 +273,10 @@ bool motor_diag_run_self_test(void) {
     bool m1 = drv8872_test_short_circuit(&motor1);
     bool m2 = drv8872_test_short_circuit(&motor2);
     bool m3 = drv8872_test_short_circuit(&motor3);
+
+    motor1_ok = !m1;
+    motor2_ok = !m2;
+    motor3_ok = !m3;
 
     debug_printf("       - Moteur 1 : %s\n", m1 ? "DEFAUT" : "OK");
     debug_printf("       - Moteur 2 : %s\n", m2 ? "DEFAUT" : "OK");

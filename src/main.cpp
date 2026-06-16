@@ -16,7 +16,6 @@
 #include "drv8872.h"
 #include "lps22hb.h"
 #include "lsm6dsl.h"
-#include "display.h"
 
 // Callback globale d'interruption GPIO (Aiguilleur central)
 void main_gpio_callback(uint gpio, uint32_t events) {
@@ -38,13 +37,15 @@ void main_gpio_callback(uint gpio, uint32_t events) {
 }
 
 void setup(void) {
+  // === Initialisation de l'interface de debug ===
+  bool serial_ready = debug_begin();
+
   // === Initialisation matérielle de base ===
   adc_init();            // Initialise le module ADC
   setup_pin();           // Configure les GPIOs physiques (platform.h)
   system_i2c_init();     // Configure et démarre le bus I2C1 (Berry MiniSensor)
   setup_rgb();           // Active et configure la LED RGB intégrée (WS2812B)
   buzzer_init();         // Initialise le buzzer matériel (PWM)
-  display_init();        // Initialise l'écran OLED (I2C0 sur GP8/GP9)
 
   // Enregistre l'aiguilleur GPIO global auprès du processeur
   gpio_set_irq_callback(main_gpio_callback);
@@ -57,40 +58,24 @@ void setup(void) {
   drv8872_setup_fault_interrupt(&motor2);
   drv8872_setup_fault_interrupt(&motor3);
 
+  // === Autotest des moteurs au démarrage ===
+  bool motors_ok = motor_diag_run_self_test();
+
   // === Lecture initiale de la batterie et de la température ===
   float voltage_batt = battery_read_voltage();
   float temperature = temperature_read_mcu();
 
-  // === Initialisation de l'interface de debug ===
-  bool serial_ready = debug_begin();
-
   // === Initialisation du système de fichiers log ===
   bool log_fs_ok = log_init();
   FSInfo fs_info;
+  size_t fs_used = 0;
+  size_t fs_total = 0;
   if (log_fs_ok) {
     LittleFS.info(fs_info);
+    fs_used = fs_info.usedBytes;
+    fs_total = fs_info.totalBytes;
   }
 
-  // === Gestion du bouton utilisateur GP24 (Dump / Effacement des logs) ===
-  if (gpio_get(24) == 0) {
-    if (serial_ready) {
-      debug_println("[BOOT] Bouton GP24 actif (LOW) -> Dump des logs en cours...");
-    }
-    log_dump(); // Affiche immédiatement les logs sur le port série
-
-    // Surveillance de l'appui maintenu (5 secondes) pour effacer les logs
-    absolute_time_t t_start = get_absolute_time();
-    while (gpio_get(24) == 0) {
-      if (absolute_time_diff_us(t_start, get_absolute_time()) > 5 * 1000 * 1000) {
-        if (serial_ready) {
-          debug_println("[BOOT] Bouton GP24 maintenu 5s -> Effacement des logs !");
-        }
-        log_clear();
-        break;
-      }   
-      sleep_ms(50);
-    }
-  }
 
   // === Initialisation des capteurs I2C et vérification de leur présence ===
   bool baro_ok = lps22hb_init();
@@ -131,6 +116,40 @@ void setup(void) {
     log_entry("[BOOT] Barometre non detecte. Mode FENETRAGE UNIQUEMENT active.");
   }
 
+
+  // === Gestion du bouton utilisateur GP24 (Dump / Effacement des logs) ===
+  if (gpio_get(24) == 0) {
+    if (serial_ready) {
+      debug_println("[BOOT] Bouton GP24 actif (LOW) -> Dump des logs en cours...");
+    }
+    log_dump(); // Affiche immédiatement les logs sur le port série
+
+    // Surveillance de l'appui maintenu (5 secondes) pour effacer les logs
+    absolute_time_t t_start = get_absolute_time();
+    while (gpio_get(24) == 0) {
+      if (absolute_time_diff_us(t_start, get_absolute_time()) > 5 * 1000 * 1000) {
+        if (serial_ready) {
+          debug_println("[BOOT] Bouton GP24 maintenu 5s -> Effacement des logs !");
+        }
+        log_clear();
+        
+        // Émission de deux bips courts pour confirmer l'effacement réussi
+        setBuzzer(true, 0, 0, 1500);
+        sleep_ms(80);
+        setBuzzer(false, 0, 0, 0);
+        sleep_ms(80);
+        setBuzzer(true, 0, 0, 1500);
+        sleep_ms(80);
+        setBuzzer(false, 0, 0, 0);
+
+        break;
+      }   
+      sleep_ms(50);
+    }
+  }
+
+
+
   // Lancement du monitoring de la batterie en tâche de fond (interruption)
   system_battery_monitor_init();
 
@@ -161,8 +180,7 @@ void setup(void) {
     debug_println("[BOOT] Autotest Actif Moteurs :");
   }
 
-  // Autotest des moteurs (imprime ses résultats compacts)
-  bool motors_ok = motor_diag_run_self_test();
+  // Autotest déjà exécuté au démarrage (résultats disponibles dans motors_ok)
 
   if (serial_ready) {
     debug_printf("       -> Autotest %s.\n", motors_ok ? "reussi" : "ECHOUE");
@@ -218,7 +236,6 @@ void setup(void) {
 }
 
 void loop() {
-  display_update();            // Met à jour l'écran OLED (I2C0 sur GP8/GP9)
   seq_handle();                // Exécute la logique de la machine d'état de vol
   system_battery_check_tick(); // Vérifie périodiquement la tension de la batterie
   log_flush();                 // Écrit les logs du buffer en flash de manière non bloquante

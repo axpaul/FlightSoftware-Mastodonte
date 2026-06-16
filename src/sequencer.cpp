@@ -110,6 +110,10 @@ rocket_state_t seq_init(void){
 
     irq_set_enabled(IO_IRQ_BANK0, true);
 
+    // Acquittement de sécurité pour libérer la broche d'interruption du baro (DRDY)
+    // et s'assurer qu'un front montant se produira bien pour lancer les interruptions.
+    (void)lps22hb_read_pressure();
+
     apply_state_config(PRE_FLIGHT);
     return PRE_FLIGHT;
 }

@@ -43,6 +43,10 @@ extern drv8872_t motor3;
 extern drv8872_t* motors[3];
 extern drv8872_group_t group_all_motors;
 
+extern bool motor1_ok;
+extern bool motor2_ok;
+extern bool motor3_ok;
+
 /**
  * @brief Initialise les broches d'un moteur et assure son arrêt complet de départ.
  */
