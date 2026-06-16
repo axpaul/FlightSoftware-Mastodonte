@@ -17,7 +17,7 @@ Conçu pour orchestrer les événements de vol temps réel, il assure l'acquisit
 
 ---
 
-## 🛠️ Fonctionnalités Clefs
+## Fonctionnalités Clefs
 
 - **Cœur natif Pico SDK (I2C Dédié)** : Implémentation d'un pilote I2C bas niveau personnalisé (accès direct aux registres matériels) pour les capteurs sur le bus `i2c1` (GP6/GP7) cadencé à 400 kHz, assurant des transactions ultra-rapides et déterministes.
 - **Filtrage de Kalman 1D Temps Réel** : Estimateur d'état à deux variables (altitude et vitesse verticale) fonctionnant à 25 Hz, synchronisé de manière stricte sur l'interruption matérielle de la broche `GP5` (Data-Ready du baromètre).
@@ -29,7 +29,7 @@ Conçu pour orchestrer les événements de vol temps réel, il assure l'acquisit
 
 ---
 
-## 📐 Architecture Logicielle
+## Architecture Logicielle
 
 Le code source est structuré selon une approche modulaire stricte, séparant l'abstraction matérielle (HAL), la logique de la machine d'état de vol, et les tâches asynchrones d'arrière-plan.
 
@@ -91,7 +91,7 @@ Déclarées dans `platformio.ini` :
 
 ---
 
-## 🚀 Guide de Démarrage Rapide (Quickstart)
+## Guide de Démarrage Rapide (Quickstart)
 
 ### 1. Prérequis Logiciels
 *   Installer [VS Code](https://code.visualstudio.com/).
