@@ -13,27 +13,6 @@ Il fait office de **séquenceur de vol**, gérant les événements critiques en 
 
 ---
 
-## 🛰️ Module de Capteurs : BR Mini Sensor
-
-La **BR Mini Sensor** est une carte mezzanine compatible de la Raspberry Pico qui comporte :
-- Un accéléromètre 3 axes
-- Un Gyromètre 3 axes
-- Un capteur de pression permettant de mesurer l'altitude
-
-Ces fonctions sont basées sur l'utilisation des composants **LSM6DSL** et **LPS22HB** du fabricant STMicroelectronics.
-
-<p align="center">
-  <img src="docs/Br_mini_sensor.png" alt="BR Mini Sensor" width="350"/>
-  <img src="docs/Br-mini-sensor_pinout.png" alt="Pinout BR Mini Sensor" width="400"/>
-</p>
-
-> [!NOTE]
-> En raison de leur petite taille, ces composants sont très difficiles à souder à moins de disposer d'un four à refusion. C'est pourquoi vous trouverez une version prête à l'emploi sur notre boutique en ligne.
-
-La carte **BR Mini Sensor** vous permettra moyennant un peu de code de mesurer et d'enregistrer les paramètres de vol de votre fusée **BR Mini Origin** (ou autre) afin d'en estimer la trajectoire.
-
----
-
 ## Fonctionnalités
 
 - **Cœur natif Pico SDK** : Pilote I2C bas niveau personnalisé (accès direct aux registres) pour les capteurs sur le bus `i2c1` (GP6/GP7) fonctionnant à 400 kHz.
@@ -183,3 +162,24 @@ La logique de vol est pilotée par une machine d'état finie (`sequencer.cpp`). 
 Le bouton connecté sur **GPIO 24** est lu au démarrage :
 - **Appui court** : Vide le contenu des fichiers de logs vers la liaison série USB à **115200 bauds**.
 - **Appui long (5 secondes)** : Efface complètement le fichier de logs de la mémoire flash interne.
+
+---
+
+## 🛰️ Module de Capteurs : BR Mini Sensor
+
+La **BR Mini Sensor** est une carte mezzanine compatible de la Raspberry Pico qui comporte :
+- Un accéléromètre 3 axes
+- Un Gyromètre 3 axes
+- Un capteur de pression permettant de mesurer l'altitude
+
+Ces fonctions sont basées sur l'utilisation des composants **LSM6DSL** et **LPS22HB** du fabricant STMicroelectronics.
+
+<p align="center">
+  <img src="docs/Br_mini_sensor.png" alt="BR Mini Sensor" width="350"/>
+  <img src="docs/Br-mini-sensor_pinout.png" alt="Pinout BR Mini Sensor" width="400"/>
+</p>
+
+> [!NOTE]
+> En raison de leur petite taille, ces composants sont très difficiles à souder à moins de disposer d'un four à refusion. C'est pourquoi vous trouverez une version prête à l'emploi sur notre boutique en ligne.
+
+La carte **BR Mini Sensor** vous permettra moyennant un peu de code de mesurer et d'enregistrer les paramètres de vol de votre fusée **BR Mini Origin** (ou autre) afin d'en estimer la trajectoire.
