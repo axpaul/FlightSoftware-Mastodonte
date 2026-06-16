@@ -13,6 +13,27 @@ Il fait office de **séquenceur de vol**, gérant les événements critiques en 
 
 ---
 
+## 🛰️ Module de Capteurs : BR Mini Sensor
+
+La **BR Mini Sensor** est une carte mezzanine compatible de la Raspberry Pico qui comporte :
+- Un accéléromètre 3 axes
+- Un Gyromètre 3 axes
+- Un capteur de pression permettant de mesurer l'altitude
+
+Ces fonctions sont basées sur l'utilisation des composants **LSM6DSL** et **LPS22HB** du fabricant STMicroelectronics.
+
+<p align="center">
+  <img src="docs/Br_mini_sensor.png" alt="BR Mini Sensor" width="350"/>
+  <img src="docs/Br-mini-sensor_pinout.png" alt="Pinout BR Mini Sensor" width="400"/>
+</p>
+
+> [!NOTE]
+> En raison de leur petite taille, ces composants sont très difficiles à souder à moins de disposer d'un four à refusion. C'est pourquoi vous trouverez une version prête à l'emploi sur notre boutique en ligne.
+
+La carte **BR Mini Sensor** vous permettra moyennant un peu de code de mesurer et d'enregistrer les paramètres de vol de votre fusée **BR Mini Origin** (ou autre) afin d'en estimer la trajectoire.
+
+---
+
 ## Fonctionnalités
 
 - **Cœur natif Pico SDK** : Pilote I2C bas niveau personnalisé (accès direct aux registres) pour les capteurs sur le bus `i2c1` (GP6/GP7) fonctionnant à 400 kHz.
@@ -87,6 +108,33 @@ Déclarées dans `platformio.ini` :
 <p align="center">
   <img src="docs/Mastodonte_synoptique.png" alt="Synoptique Mastodonte" width="750"/>
 </p>
+
+---
+
+## 🚀 Guide de Démarrage Rapide (Quickstart)
+
+### 1. Prérequis Logiciels
+*   Installer [VS Code](https://code.visualstudio.com/).
+*   Installer l'extension **PlatformIO IDE** depuis le gestionnaire d'extensions de VS Code.
+
+### 2. Compilation du Projet
+1.  Ouvrir VS Code, puis ouvrir le dossier du projet `FlightSoftware-Mastodonte`.
+2.  Laisser PlatformIO configurer l'environnement (cela peut prendre quelques minutes au premier démarrage).
+3.  Cliquer sur l'icône de **coche (✓)** dans la barre d'état inférieure de VS Code (Build) ou exécuter la commande suivante dans le terminal :
+    ```bash
+    pio run
+    ```
+
+### 3. Téléversement / Flashage de la Carte YD-RP2040
+Le téléversement se fait via USB :
+1.  Brancher la carte YD-RP2040 à votre ordinateur avec un câble USB-C.
+2.  Maintenir enfoncé le bouton **BOOT** (situé sur la carte), appuyer brièvement sur le bouton **RST** (Reset), puis relâcher le bouton BOOT.
+3.  La carte apparaît sur l'ordinateur comme une clé USB nommée **`RPI-RP2`**.
+4.  Cliquer sur la **flèche (→)** dans la barre d'état de PlatformIO (Upload) pour flasher. Vous pouvez aussi copier-coller manuellement le fichier binaire `.pio/build/pico/firmware.uf2` directement sur la clé USB `RPI-RP2`. La carte redémarrera automatiquement dès la fin du transfert.
+
+### 4. Console de Débogage (Serial Monitor)
+*   Ouvrir le moniteur série de PlatformIO (l'icône de prise électrique) pour visualiser la télémétrie et le statut du vol en direct à **`115200 bauds`**.
+*   **Comportement au Boot** : Si `DEBUG_ENABLED` est activé, la carte attend jusqu'à 10 secondes l'ouverture de la console série USB avant de démarrer pour que vous ne manquiez pas les premiers logs d'initialisation.
 
 ---
 
